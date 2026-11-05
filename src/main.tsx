@@ -13,6 +13,10 @@ if (!rootElement) {
 
 const store = createAppStore();
 
+import.meta.hot?.dispose(() => {
+  void store.dispose();
+});
+
 createRoot(rootElement).render(
   <StrictMode>
     <Provider store={store}>

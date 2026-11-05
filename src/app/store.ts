@@ -1,12 +1,62 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { combineReducers, configureStore } from '@reduxjs/toolkit';
+import type { Agent } from '@/agent/types';
+import { chatsReducer } from '@/features/chat/model/chatsSlice';
+import {
+  createEmptyChat,
+  createInitialChatsState,
+} from '@/features/chat/model/helpers';
+import {
+  createRequestExecutor,
+  type RequestExecutor,
+} from '@/features/chat/model/requestExecutor';
+import type { ChatsState } from '@/features/chat/model/types';
+import { appReducer } from './appSlice';
 
-export function createAppStore() {
-  return configureStore({
-    // Feature reducers будут подключены на этапе модели чатов.
-    reducer: (state: Record<string, never> = {}) => state,
+const rootReducer = combineReducers({ chats: chatsReducer, app: appReducer });
+export type RootState = ReturnType<typeof rootReducer>;
+
+interface StoreOptions {
+  agent?: Agent;
+  now?: () => string;
+  createId?: () => string;
+  timeoutMs?: number;
+  preloadedState?: RootState;
+}
+
+const unconfiguredAgent: Agent = () => {
+  throw new Error('Mock-agent будет подключён на следующем этапе.');
+};
+
+export function createAppStore(options: StoreOptions = {}) {
+  const now = options.now ?? (() => new Date().toISOString());
+  const createId = options.createId ?? (() => crypto.randomUUID());
+  const preloadedState = options.preloadedState ?? {
+    chats: createInitialChatsState(createEmptyChat(createId(), now())),
+    app: appReducer(undefined, { type: '@@init' }),
+  };
+  // Callbacks are used by commands only after configureStore has returned.
+  const requestExecutor: RequestExecutor = createRequestExecutor({
+    agent: options.agent ?? unconfiguredAgent,
+    now,
+    createId,
+    getState: (): ChatsState => store.getState().chats,
+    dispatch: (action): void => {
+      store.dispatch(action);
+    },
+    ...(options.timeoutMs === undefined
+      ? {}
+      : { timeoutMs: options.timeoutMs }),
   });
+  const store = configureStore({
+    reducer: rootReducer,
+    preloadedState,
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({
+        thunk: { extraArgument: { requestExecutor, now, createId } },
+      }),
+  });
+  return Object.assign(store, { dispose: requestExecutor.dispose });
 }
 
 export type AppStore = ReturnType<typeof createAppStore>;
-export type RootState = ReturnType<AppStore['getState']>;
 export type AppDispatch = AppStore['dispatch'];
