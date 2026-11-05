@@ -1,0 +1,48 @@
+.page {
+  display: grid;
+  min-height: 100dvh;
+  padding: 32px;
+  place-items: center;
+}
+
+.intro {
+  width: 100%;
+  max-width: 760px;
+}
+
+.brand {
+  margin: 0 0 16px;
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.title {
+  margin: 0 0 16px;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.description {
+  max-width: 56ch;
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+@media (width < 1024px) {
+  .page {
+    padding: 24px;
+  }
+}
+
+@media (width < 768px) {
+  .page {
+    padding: 12px;
+  }
+
+  .title {
+    font-size: 24px;
+    line-height: 1.3;
+  }
+}
