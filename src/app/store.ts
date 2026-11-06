@@ -1,5 +1,6 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import type { Agent } from '@/agent/types';
+import { createMockAgent } from '@/agent/mockAgent';
 import { chatsReducer } from '@/features/chat/model/chatsSlice';
 import {
   createEmptyChat,
@@ -23,10 +24,6 @@ interface StoreOptions {
   preloadedState?: RootState;
 }
 
-const unconfiguredAgent: Agent = () => {
-  throw new Error('Mock-agent будет подключён на следующем этапе.');
-};
-
 export function createAppStore(options: StoreOptions = {}) {
   const now = options.now ?? (() => new Date().toISOString());
   const createId = options.createId ?? (() => crypto.randomUUID());
@@ -36,7 +33,7 @@ export function createAppStore(options: StoreOptions = {}) {
   };
   // Callbacks are used by commands only after configureStore has returned.
   const requestExecutor: RequestExecutor = createRequestExecutor({
-    agent: options.agent ?? unconfiguredAgent,
+    agent: options.agent ?? createMockAgent({ now, createId }),
     now,
     createId,
     getState: (): ChatsState => store.getState().chats,

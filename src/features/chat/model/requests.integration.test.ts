@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { createAppStore, type AppStore } from '@/app/store';
+import { MOCK_TIMING } from '@/agent/config';
 import { createControlledAgent } from '@/test/controlledAgent';
 import { createIds, eventFor, lastAssistant, TEST_TIME } from '@/test/fixtures';
 import { chatActions } from './chatsSlice';
@@ -29,10 +30,17 @@ function setup() {
 
 afterEach(async () => {
   await Promise.all(stores.splice(0).map((store) => store.dispose()));
+  vi.useRealTimers();
 });
 
-it('INT-01: sends once, streams and completes the response', async () => {
-  const { store, control, chatId } = setup();
+it('INT-01: sends once, streams and completes the real mock-agent response', async () => {
+  vi.useFakeTimers();
+  const store = createAppStore({ now: () => TEST_TIME, createId: createIds() });
+  stores.push(store);
+  const chatId = store.getState().chats.selectedChatId;
+  store.dispatch(
+    chatActions.draftChanged({ chatId, draft: '  Объясни закон Архимеда  ' }),
+  );
   expect(store.dispatch(sendMessage(chatId))).toBe(true);
   const accepted = lastAssistant(store.getState().chats.byId[chatId]);
   expect(accepted).toMatchObject({
@@ -43,39 +51,32 @@ it('INT-01: sends once, streams and completes the response', async () => {
   expect(store.getState().chats.byId[chatId]?.messages[0]).toMatchObject({
     id: accepted.replyToMessageId,
     role: 'user',
-    text: 'First question',
+    text: 'Объясни закон Архимеда',
   });
   expect(accepted.id).not.toBe(accepted.replyToMessageId);
   store.dispatch(chatActions.draftChanged({ chatId, draft: 'next question' }));
   expect(store.dispatch(sendMessage(chatId))).toBe(false);
-  expect(control.calls).toHaveLength(1);
-  expect(control.call(0).request).toMatchObject({
-    chatId,
-    assistantMessageId: accepted.id,
-    runId: accepted.run.id,
-    prompt: 'First question',
-    history: [],
-    attempt: 1,
+  await vi.advanceTimersByTimeAsync(MOCK_TIMING.queuedMs);
+  expect(lastAssistant(store.getState().chats.byId[chatId]).run.status).toBe(
+    'processing',
+  );
+  await vi.advanceTimersByTimeAsync(
+    MOCK_TIMING.processingMs + MOCK_TIMING.chunkMs,
+  );
+  const partial = lastAssistant(store.getState().chats.byId[chatId]);
+  expect(partial.run.status).toBe('streaming');
+  expect(partial.text.length).toBeGreaterThan(0);
+  await vi.runAllTimersAsync();
+  const completed = lastAssistant(store.getState().chats.byId[chatId]);
+  expect(completed.run).toMatchObject({
+    id: accepted.run.id,
+    status: 'completed',
   });
-  control.call(0).emit({ type: 'started' });
-  control.call(0).emit({ type: 'text_delta', text: 'First ' });
-  await vi.waitFor(() =>
-    expect(lastAssistant(store.getState().chats.byId[chatId]).text).toBe(
-      'First ',
-    ),
-  );
-  control.call(0).emit({ type: 'text_delta', text: 'answer' });
-  control.call(0).emit({ type: 'completed' });
-  await vi.waitFor(() =>
-    expect(lastAssistant(store.getState().chats.byId[chatId]).run.status).toBe(
-      'completed',
-    ),
-  );
-  expect(lastAssistant(store.getState().chats.byId[chatId]).text).toBe(
-    'First answer',
-  );
+  expect(completed.text).toContain('Fₐ = ρ · g · V');
+  expect(completed.text.length).toBeGreaterThan(partial.text.length);
   expect(store.getState().chats.byId[chatId]?.messages).toHaveLength(2);
   expect(store.getState().chats.byId[chatId]?.draft).toBe('next question');
+  expect(vi.getTimerCount()).toBe(0);
 });
 
 it('INT-02: stops generation and ignores late events', async () => {
