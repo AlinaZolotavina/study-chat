@@ -9,5 +9,4 @@ export const MOCK_TIMING = {
 
 export type MockTiming = { [Key in keyof typeof MOCK_TIMING]: number };
 export const STREAM_CHUNK_SIZE = 16;
-export const ARCHIMEDES_IMAGE_SRC =
-  'assets/Archimedes’ Principle Infographic (1).png';
+export const NEWTON_IMAGE_SRC = 'assets/newtons-2nd-law-of-motion.png';

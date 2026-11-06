@@ -1,12 +1,15 @@
 import { createSelector } from '@reduxjs/toolkit';
+import { deriveContext } from '@/agent/context';
+import { EMPTY_SUGGESTIONS, getSuggestions } from '@/agent/suggestions';
 import {
   canRetryMessage,
+  buildAgentHistory,
   getChatById,
   getLastAssistant,
   isActiveRun,
   validateDraft,
 } from './helpers';
-import type { ChatRootState, Message } from './types';
+import type { ChatRootState, Message, Run } from './types';
 
 const EMPTY_MESSAGES: readonly Message[] = Object.freeze([]);
 export const selectSelectedChat = (state: ChatRootState) =>
@@ -14,6 +17,16 @@ export const selectSelectedChat = (state: ChatRootState) =>
 export const selectOrderedChatIds = (state: ChatRootState) => state.chats.order;
 export const selectChatMessages = (state: ChatRootState, chatId: string) =>
   getChatById(state.chats, chatId)?.messages ?? EMPTY_MESSAGES;
+
+export const selectChatSuggestions = createSelector(
+  [selectChatMessages],
+  (messages): readonly string[] => {
+    const last = getLastAssistant(messages);
+    return last?.run.status === 'completed'
+      ? getSuggestions(deriveContext(buildAgentHistory(messages)))
+      : EMPTY_SUGGESTIONS;
+  },
+);
 
 export function selectActiveRun(state: ChatRootState, chatId: string) {
   const message = getLastAssistant(selectChatMessages(state, chatId));
@@ -56,6 +69,10 @@ export function selectAgentStatusLabel(
 ): string | null {
   const run = getLastAssistant(selectChatMessages(state, chatId))?.run;
   if (!run) return null;
+  return getAgentStatusLabel(run);
+}
+
+export function getAgentStatusLabel(run: Run): string | null {
   switch (run.status) {
     case 'queued':
       return 'Сообщение отправлено';

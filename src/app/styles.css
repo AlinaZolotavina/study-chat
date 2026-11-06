@@ -39,6 +39,13 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   min-width: 320px;
   min-height: 100dvh;
@@ -49,6 +56,11 @@ button,
 input,
 textarea {
   font: inherit;
+}
+
+button,
+textarea {
+  -webkit-tap-highlight-color: transparent;
 }
 
 :focus-visible {

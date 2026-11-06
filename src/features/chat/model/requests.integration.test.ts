@@ -39,7 +39,10 @@ it('INT-01: sends once, streams and completes the real mock-agent response', asy
   stores.push(store);
   const chatId = store.getState().chats.selectedChatId;
   store.dispatch(
-    chatActions.draftChanged({ chatId, draft: '  Объясни закон Архимеда  ' }),
+    chatActions.draftChanged({
+      chatId,
+      draft: '  Объясни второй закон Ньютона  ',
+    }),
   );
   expect(store.dispatch(sendMessage(chatId))).toBe(true);
   const accepted = lastAssistant(store.getState().chats.byId[chatId]);
@@ -51,7 +54,7 @@ it('INT-01: sends once, streams and completes the real mock-agent response', asy
   expect(store.getState().chats.byId[chatId]?.messages[0]).toMatchObject({
     id: accepted.replyToMessageId,
     role: 'user',
-    text: 'Объясни закон Архимеда',
+    text: 'Объясни второй закон Ньютона',
   });
   expect(accepted.id).not.toBe(accepted.replyToMessageId);
   store.dispatch(chatActions.draftChanged({ chatId, draft: 'next question' }));
@@ -72,7 +75,7 @@ it('INT-01: sends once, streams and completes the real mock-agent response', asy
     id: accepted.run.id,
     status: 'completed',
   });
-  expect(completed.text).toContain('Fₐ = ρ · g · V');
+  expect(completed.text).toContain('F = m · a');
   expect(completed.text.length).toBeGreaterThan(partial.text.length);
   expect(store.getState().chats.byId[chatId]?.messages).toHaveLength(2);
   expect(store.getState().chats.byId[chatId]?.draft).toBe('next question');

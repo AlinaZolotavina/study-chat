@@ -2,7 +2,7 @@ import { delay } from '@/shared/delay';
 import { calculateProduct } from './calculator';
 import { classifyCommand } from './commands';
 import {
-  ARCHIMEDES_IMAGE_SRC,
+  NEWTON_IMAGE_SRC,
   MOCK_TIMING,
   STREAM_CHUNK_SIZE,
   type MockTiming,
@@ -76,7 +76,7 @@ export function createMockAgent(options: MockAgentOptions = {}): Agent {
       if (scenario.kind === 'image') {
         yield event({ type: 'phase_changed', phase: 'preparing_image' });
         await delay(timing.imageMs, signal);
-        yield event({ type: 'image_received', imageSrc: ARCHIMEDES_IMAGE_SRC });
+        yield event({ type: 'image_received', imageSrc: NEWTON_IMAGE_SRC });
         await delay(timing.composingMs, signal);
       } else if (text)
         yield event({ type: 'phase_changed', phase: 'composing' });

@@ -39,6 +39,81 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
+it('sends a suggested reply once through the same executor while preserving the draft', async () => {
+  const chat = createEmptyChat('a', TEST_TIME);
+  const past = makeTurn(
+    { ...queuedRun('past'), status: 'completed', finishedAt: TEST_TIME },
+    'explanation',
+    'past',
+  );
+  past[0].text = 'Объясни второй закон Ньютона';
+  chat.messages = past;
+  chat.draft = 'next question already typed';
+  const control = createControlledAgent();
+  const context = setup(control.agent, 1000, createInitialChatsState(chat));
+  const reply = { text: 'Покажи схему', afterMessageId: past[1].id };
+  expect(context.executor.send(chat.id, reply)).toBe(true);
+  expect(context.executor.send(chat.id, reply)).toBe(false);
+  expect(context.state().byId.a?.messages).toHaveLength(4);
+  expect(context.state().byId.a?.messages[2]).toMatchObject({
+    role: 'user',
+    text: reply.text,
+  });
+  expect(context.state().byId.a?.draft).toBe(chat.draft);
+  const call = control.call(0);
+  expect(call.request).toMatchObject({
+    prompt: reply.text,
+    history: [{ userText: past[0].text, assistantText: past[1].text }],
+  });
+  call.emit({ type: 'started' });
+  call.emit({ type: 'text_delta', text: 'new answer' });
+  call.emit({ type: 'completed' });
+  await vi.waitFor(() =>
+    expect(lastAssistant(context.state().byId.a).run.status).toBe('completed'),
+  );
+  const before = context.state();
+  expect(context.executor.send(chat.id, reply)).toBe(false);
+  expect(context.state()).toBe(before);
+  expect(context.state().byId.a?.draft).toBe(chat.draft);
+});
+
+it.each(['', ' '.repeat(3), 'x'.repeat(4001)])(
+  'rejects invalid explicit text without touching the draft (%#)',
+  (text) => {
+    const chat = createEmptyChat('a', TEST_TIME);
+    chat.messages = makeTurn(
+      { ...queuedRun(), status: 'completed', finishedAt: TEST_TIME },
+      'answer',
+    );
+    chat.draft = 'keep draft';
+    const agent = vi.fn<Agent>();
+    const context = setup(agent, 1000, createInitialChatsState(chat));
+    const before = context.state();
+    expect(
+      context.executor.send(chat.id, { text, afterMessageId: 'assistant-1' }),
+    ).toBe(false);
+    expect(context.state()).toBe(before);
+    expect(agent).not.toHaveBeenCalled();
+  },
+);
+
+it.each(['constructor', 'toString', '__proto__', 'missing'])(
+  'rejects a suggested reply for a missing chat: %s',
+  (chatId) => {
+    const agent = vi.fn<Agent>();
+    const context = setup(agent);
+    const before = context.state();
+    expect(
+      context.executor.send(chatId, {
+        text: 'Проще',
+        afterMessageId: 'assistant-1',
+      }),
+    ).toBe(false);
+    expect(context.state()).toBe(before);
+    expect(agent).not.toHaveBeenCalled();
+  },
+);
+
 it.each<Run>([
   {
     ...queuedRun('old-run'),

@@ -2,12 +2,14 @@ import { expect, it } from 'vitest';
 import { makeTurn, queuedRun, TEST_TIME } from '@/test/fixtures';
 import { createEmptyChat, createInitialChatsState } from './helpers';
 import type { Run } from './types';
+import { chatsReducer, chatActions } from './chatsSlice';
 import {
   selectActiveRun,
   selectAgentStatusLabel,
   selectCanRetry,
   selectCanSend,
   selectChatMessages,
+  selectChatSuggestions,
   selectChatRowMetadata,
   selectOrderedChatIds,
   selectSelectedChat,
@@ -151,6 +153,7 @@ it.each(['constructor', 'toString', '__proto__', 'missing'])(
     const state = { chats };
     expect(selectSelectedChat(state)).toBe(chats.byId.existing);
     expect(selectChatMessages(state, chatId)).toEqual([]);
+    expect(selectChatSuggestions(state, chatId)).toEqual([]);
     expect(selectChatMessages(state, chatId)).toBe(
       selectChatMessages(state, 'another-missing-id'),
     );
@@ -163,6 +166,159 @@ it.each(['constructor', 'toString', '__proto__', 'missing'])(
     expect(
       selectSelectedChat({ chats: { ...chats, selectedChatId: chatId } }),
     ).toBeUndefined();
+  },
+);
+
+function completedQuestion(prompt: string, suffix = '1') {
+  const turn = makeTurn(
+    {
+      ...queuedRun(`run-${suffix}`),
+      status: 'completed',
+      finishedAt: TEST_TIME,
+    },
+    'answer does not define context',
+    suffix,
+  );
+  turn[0].text = prompt;
+  return turn;
+}
+
+it('derives the latest suggestions per chat and does not subscribe to draft or other chat changes', () => {
+  const chat = createEmptyChat('a', TEST_TIME);
+  chat.messages = completedQuestion('Объясни второй закон Ньютона');
+  const chats = createInitialChatsState(chat);
+  const first = selectChatSuggestions({ chats }, chat.id);
+  expect(first).toEqual([
+    'Объясни проще',
+    'Покажи схему',
+    'Приведи пример из жизни',
+  ]);
+  const withDraft = chatsReducer(
+    chats,
+    chatActions.draftChanged({ chatId: chat.id, draft: 'typed' }),
+  );
+  expect(selectChatSuggestions({ chats: withDraft }, chat.id)).toBe(first);
+  const second = createEmptyChat('b', TEST_TIME);
+  second.messages = completedQuestion('Помоги решить уравнение', 'b');
+  const switched = chatsReducer(withDraft, chatActions.chatCreated(second));
+  expect(selectChatSuggestions({ chats: switched }, second.id)).toEqual([
+    'Дальше',
+    'Почему нужно раскрывать скобки?',
+  ]);
+  expect(selectChatSuggestions({ chats: switched }, chat.id)).toBe(first);
+});
+
+it.each(runCases.filter(({ run }) => run.status !== 'completed'))(
+  'hides previous suggestions while the latest response is $run.status',
+  ({ run }) => {
+    const chat = createEmptyChat('a', TEST_TIME);
+    chat.messages = [
+      ...completedQuestion('Объясни второй закон Ньютона'),
+      ...makeTurn(run, 'partial', 'current'),
+    ];
+    expect(
+      selectChatSuggestions({ chats: createInitialChatsState(chat) }, chat.id),
+    ).toEqual([]);
+  },
+);
+
+it('hides suggestions as soon as a new user question appears', () => {
+  const chat = createEmptyChat('a', TEST_TIME);
+  chat.messages = [
+    ...completedQuestion('Объясни второй закон Ньютона'),
+    { id: 'new-user', createdAt: TEST_TIME, role: 'user', text: 'Anything' },
+  ];
+  expect(
+    selectChatSuggestions({ chats: createInitialChatsState(chat) }, chat.id),
+  ).toEqual([]);
+});
+
+it('restores current suggestions from JSON, excludes unsuccessful pairs and preserves progress through fallback', () => {
+  const chat = createEmptyChat('a', TEST_TIME);
+  const failed = makeTurn(
+    {
+      ...queuedRun('failed'),
+      status: 'failed',
+      finishedAt: TEST_TIME,
+      error: { code: 'demo_failure', retryable: true },
+    },
+    'partial',
+    'failed',
+  );
+  failed[0].text = 'Проще';
+  chat.messages = [
+    ...completedQuestion('Объясни второй закон Ньютона'),
+    ...failed,
+    ...completedQuestion('Покажи схему', 'diagram'),
+    ...completedQuestion('Неизвестный вопрос', 'fallback'),
+  ];
+  const state = { chats: createInitialChatsState(chat) };
+  const restored = JSON.parse(JSON.stringify(state));
+  expect(selectChatSuggestions(restored, chat.id)).toEqual([
+    'Объясни проще',
+    'Приведи пример из жизни',
+  ]);
+  expect(state.chats.byId.a?.messages).toHaveLength(8);
+  expect(Object.keys(state.chats.byId.a ?? {})).not.toContain('suggestions');
+});
+
+it('keeps used equation questions hidden across fallback, JSON restoration and chat switching', () => {
+  const chat = createEmptyChat('a', TEST_TIME);
+  chat.messages = [
+    ...completedQuestion('Помоги решить уравнение', 'start'),
+    ...completedQuestion('Почему нужно раскрывать скобки?', 'why'),
+    ...completedQuestion('Новый вопрос', 'fallback'),
+  ];
+  const second = createEmptyChat('b', TEST_TIME);
+  second.messages = completedQuestion('Помоги решить уравнение', 'second');
+  const chats = createInitialChatsState(chat);
+  chats.byId.b = second;
+  chats.order.push('b');
+  chats.selectedChatId = 'b';
+  const state = JSON.parse(JSON.stringify({ chats }));
+  expect(selectChatSuggestions(state, chat.id)).toEqual(['Дальше']);
+  expect(selectChatSuggestions(state, second.id)).toEqual([
+    'Дальше',
+    'Почему нужно раскрывать скобки?',
+  ]);
+  const switched = {
+    chats: chatsReducer(state.chats, chatActions.chatSelected(chat.id)),
+  };
+  expect(selectChatSuggestions(switched, chat.id)).toEqual(['Дальше']);
+  const next = completedQuestion('Дальше', 'next');
+  const advanced = {
+    chats: {
+      ...chats,
+      byId: {
+        ...chats.byId,
+        a: { ...chat, messages: [...chat.messages, ...next] },
+      },
+    },
+  };
+  expect(selectChatSuggestions(advanced, chat.id)).toEqual([
+    'Дальше',
+    'Почему −12 + 5 = −7?',
+  ]);
+});
+
+it.each(
+  runCases.filter(({ run }) =>
+    ['failed', 'cancelled', 'interrupted'].includes(run.status),
+  ),
+)(
+  'does not consume a question after $run.status, even when a later fallback succeeds',
+  ({ run }) => {
+    const chat = createEmptyChat('a', TEST_TIME);
+    const incomplete = makeTurn(run, 'partial', 'incomplete');
+    incomplete[0].text = 'Почему нужно раскрывать скобки?';
+    chat.messages = [
+      ...completedQuestion('Помоги решить уравнение'),
+      ...incomplete,
+      ...completedQuestion('Новый вопрос', 'fallback'),
+    ];
+    expect(
+      selectChatSuggestions({ chats: createInitialChatsState(chat) }, chat.id),
+    ).toEqual(['Дальше', 'Почему нужно раскрывать скобки?']);
   },
 );
 

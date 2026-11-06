@@ -1,8 +1,19 @@
 export type Command =
   | { kind: 'demo_error' | 'demo_partial_error' }
-  | { kind: 'simplify' | 'diagram' | 'next' }
+  | {
+      kind:
+        | 'simplify'
+        | 'diagram'
+        | 'life_example'
+        | 'next'
+        | 'explain_brackets'
+        | 'explain_constants'
+        | 'explain_transfer'
+        | 'verify_detail'
+        | 'verify_method';
+    }
   | { kind: 'calculator'; left: number; right: number }
-  | { kind: 'equation' | 'archimedes' | 'unsupported' };
+  | { kind: 'equation' | 'newton' | 'unsupported' };
 
 const aliases: Readonly<Record<string, Command['kind']>> = {
   'покажи ошибку': 'demo_error',
@@ -14,13 +25,18 @@ const aliases: Readonly<Record<string, Command['kind']>> = {
   'покажи схему': 'diagram',
   'нарисуй схему': 'diagram',
   'покажи иллюстрацию': 'diagram',
+  'приведи пример из жизни': 'life_example',
+  'почему нужно раскрывать скобки': 'explain_brackets',
+  'почему -12 + 5 = -7': 'explain_constants',
+  'почему при переносе меняется знак': 'explain_transfer',
+  'покажи проверку подробнее': 'verify_detail',
+  'объясни, как проверить ответ': 'verify_method',
   дальше: 'next',
   продолжай: 'next',
   'следующий шаг': 'next',
   'помоги решить уравнение': 'equation',
-  'объясни закон архимеда': 'archimedes',
-  'объясни принцип архимеда': 'archimedes',
-  'расскажи о законе архимеда': 'archimedes',
+  'объясни второй закон ньютона': 'newton',
+  'расскажи о втором законе ньютона': 'newton',
 };
 
 export function normalizeCommand(prompt: string) {
@@ -33,11 +49,22 @@ export function normalizeCommand(prompt: string) {
 
 export function classifyCommand(prompt: string): Command {
   const normalized = normalizeCommand(prompt);
-  const kind = Object.hasOwn(aliases, normalized)
-    ? aliases[normalized]
+  const matchingText = normalized.replaceAll('−', '-');
+  const kind = Object.hasOwn(aliases, matchingText)
+    ? aliases[matchingText]
     : undefined;
   if (kind === 'demo_error' || kind === 'demo_partial_error') return { kind };
-  if (kind === 'simplify' || kind === 'diagram' || kind === 'next')
+  if (
+    kind === 'simplify' ||
+    kind === 'diagram' ||
+    kind === 'life_example' ||
+    kind === 'next' ||
+    kind === 'explain_brackets' ||
+    kind === 'explain_constants' ||
+    kind === 'explain_transfer' ||
+    kind === 'verify_detail' ||
+    kind === 'verify_method'
+  )
     return { kind };
 
   const calculation =
@@ -54,11 +81,11 @@ export function classifyCommand(prompt: string): Command {
   }
   if (
     kind === 'equation' ||
-    /^помоги решить 2\s*[xх]\s*\+\s*6\s*=\s*14,\s*но не давай ответ сразу$/u.test(
-      normalized,
+    /^помоги решить (?:уравнение )?3\s*\(\s*2\s*[xх]\s*-\s*4\s*\)\s*\+\s*5\s*=\s*2\s*\(\s*[xх]\s*\+\s*7\s*\),\s*но не давай ответ сразу$/u.test(
+      matchingText,
     )
   )
     return { kind: 'equation' };
-  if (kind === 'archimedes') return { kind };
+  if (kind === 'newton') return { kind };
   return { kind: 'unsupported' };
 }

@@ -30,6 +30,11 @@ interface ExecutorOptions {
   timeoutMs?: number;
 }
 
+export interface SuggestedReplyInput {
+  text: string;
+  afterMessageId: string;
+}
+
 interface RunHandle {
   request: AgentRequest;
   controller: AbortController;
@@ -161,12 +166,17 @@ export function createRequestExecutor(options: ExecutorOptions) {
     return true;
   }
 
-  function send(chatId: string) {
+  function send(chatId: string, reply?: SuggestedReplyInput) {
     if (disposed) return false;
     const chat = getChatById(getState(), chatId);
     if (!chat) return false;
     const last = getLastAssistant(chat.messages);
-    const validation = validateDraft(chat.draft);
+    if (
+      reply &&
+      (last?.id !== reply.afterMessageId || last.run.status !== 'completed')
+    )
+      return false;
+    const validation = validateDraft(reply ? reply.text : chat.draft);
     if (!validation.valid || (last && isActiveRun(last.run))) return false;
     const at = now();
     const user: UserMessage = {
@@ -198,7 +208,14 @@ export function createRequestExecutor(options: ExecutorOptions) {
       prompt: user.text,
       history: buildAgentHistory(chat.messages),
     };
-    dispatch(chatActions.requestAccepted({ chatId, user, assistant }));
+    dispatch(
+      chatActions.requestAccepted({
+        chatId,
+        user,
+        assistant,
+        preserveDraft: reply !== undefined,
+      }),
+    );
     return start(request);
   }
 

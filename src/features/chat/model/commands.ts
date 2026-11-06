@@ -1,7 +1,8 @@
 import type { ThunkAction, UnknownAction } from '@reduxjs/toolkit';
 import { chatActions } from './chatsSlice';
 import { createEmptyChat, getChatById } from './helpers';
-import type { RequestExecutor } from './requestExecutor';
+import { selectChatSuggestions } from './selectors';
+import type { RequestExecutor, SuggestedReplyInput } from './requestExecutor';
 import type { ChatRootState } from './types';
 
 export interface ChatDependencies {
@@ -18,9 +19,15 @@ type ChatThunk<Result> = ThunkAction<
 >;
 
 export const sendMessage =
-  (chatId: string): ChatThunk<boolean> =>
-  (_dispatch, _getState, { requestExecutor }) =>
-    requestExecutor.send(chatId);
+  (chatId: string, reply?: SuggestedReplyInput): ChatThunk<boolean> =>
+  (_dispatch, getState, { requestExecutor }) => {
+    if (
+      reply &&
+      !selectChatSuggestions(getState(), chatId).includes(reply.text)
+    )
+      return false;
+    return requestExecutor.send(chatId, reply);
+  };
 
 export const retryResponse =
   (chatId: string, messageId: string): ChatThunk<boolean> =>

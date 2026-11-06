@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import { createIds, TEST_TIME } from '@/test/fixtures';
 import * as calculator from './calculator';
 import * as scenarios from './scenarios';
-import { ARCHIMEDES_IMAGE_SRC, MOCK_TIMING } from './config';
+import { NEWTON_IMAGE_SRC, MOCK_TIMING } from './config';
 import { createMockAgent } from './mockAgent';
 import type { Agent, AgentEvent, AgentRequest } from './types';
 
@@ -55,8 +55,8 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
-it('streams Archimedes with observable delays and correctly addressed events (S-01)', async () => {
-  const run = start('Объясни закон Архимеда');
+it('streams Newton with observable delays and correctly addressed events (S-01)', async () => {
+  const run = start('Объясни второй закон Ньютона');
   expect(run.events).toEqual([]);
   await vi.advanceTimersByTimeAsync(MOCK_TIMING.queuedMs - 1);
   expect(run.events).toEqual([]);
@@ -71,7 +71,7 @@ it('streams Archimedes with observable delays and correctly addressed events (S-
   await vi.advanceTimersByTimeAsync(MOCK_TIMING.chunkMs);
   expect(Array.from(textOf(run.events))).toHaveLength(16);
   await complete(run);
-  expect(textOf(run.events)).toContain('Fₐ = ρ · g · V');
+  expect(textOf(run.events)).toContain('F = m · a');
   const deltas = run.events.filter((event) => event.type === 'text_delta');
   expect(deltas.length).toBeGreaterThan(2);
   for (const [index, delta] of deltas.entries()) {
@@ -101,7 +101,7 @@ it('does not split a Unicode code point between streamed fragments', async () =>
     kind: 'text',
     text,
   });
-  const run = start('Объясни закон Архимеда');
+  const run = start('Объясни второй закон Ньютона');
   await complete(run);
   const firstDelta = run.events.find((event) => event.type === 'text_delta');
   expect(firstDelta?.text).toBe('a'.repeat(15) + '🙂');
@@ -110,20 +110,20 @@ it('does not split a Unicode code point between streamed fragments', async () =>
 
 it('simplifies the successful topic without emitting an image (S-02)', async () => {
   const run = start('Скажи проще', {
-    history: history('Объясни принцип Архимеда'),
+    history: history('Расскажи о втором законе Ньютона'),
   });
   await complete(run);
-  expect(textOf(run.events)).toContain('мяч');
-  expect(textOf(run.events)).toContain('Покажи схему');
+  expect(textOf(run.events)).toContain('тележку');
+  expect(textOf(run.events)).toContain('ускорение');
   expect(run.events.some((event) => event.type === 'image_received')).toBe(
     false,
   );
   expect(run.events.at(-1)?.type).toBe('completed');
 });
 
-it('prepares the existing image only after explanation and simplification (S-03)', async () => {
+it('prepares the supplied Newton image directly after the first explanation (S-03)', async () => {
   const run = start('Нарисуй схему', {
-    history: history('Объясни закон Архимеда', 'Проще'),
+    history: history('Объясни второй закон Ньютона'),
   });
   await vi.advanceTimersByTimeAsync(
     MOCK_TIMING.queuedMs + MOCK_TIMING.processingMs,
@@ -142,16 +142,14 @@ it('prepares the existing image only after explanation and simplification (S-03)
   await vi.advanceTimersByTimeAsync(1);
   expect(run.events.at(-1)).toMatchObject({
     type: 'image_received',
-    imageSrc: ARCHIMEDES_IMAGE_SRC,
+    imageSrc: NEWTON_IMAGE_SRC,
   });
   expect(textOf(run.events)).toBe('');
   expect(
-    existsSync(
-      new URL(`../../public/${ARCHIMEDES_IMAGE_SRC}`, import.meta.url),
-    ),
+    existsSync(new URL(`../../public/${NEWTON_IMAGE_SRC}`, import.meta.url)),
   ).toBe(true);
   await complete(run);
-  expect(textOf(run.events)).toContain('выталкивающая сила');
+  expect(textOf(run.events)).toContain('a = F / m');
   expect(
     run.events.filter((event) => event.type === 'image_received'),
   ).toHaveLength(1);
@@ -159,15 +157,15 @@ it('prepares the existing image only after explanation and simplification (S-03)
   expect(run.events.at(-1)?.type).toBe('completed');
 });
 
-it.each([{ previous: [] }, { previous: history('Объясни закон Архимеда') }])(
-  'does not skip the required teaching steps before an image (%#)',
+it.each([{ previous: [] }, { previous: history('Помоги решить уравнение') }])(
+  'does not emit an image without the Newton topic (%#)',
   async ({ previous }) => {
     const run = start('Покажи схему', { history: previous });
     await complete(run);
     expect(run.events.some((event) => event.type === 'image_received')).toBe(
       false,
     );
-    expect(textOf(run.events)).toContain('Объясни проще');
+    expect(textOf(run.events)).toContain('деморежиме');
     expect(run.events.at(-1)?.type).toBe('completed');
   },
 );
@@ -175,22 +173,29 @@ it.each([{ previous: [] }, { previous: history('Объясни закон Арх
 it('solves the fixed equation in steps without leaking the answer early (S-04/S-05)', async () => {
   const first = start('Помоги решить уравнение');
   await complete(first);
-  expect(textOf(first.events)).toContain('вычти 6');
-  expect(textOf(first.events)).not.toContain('x = 4');
+  expect(textOf(first.events)).toContain('6x − 12 + 5 = 2x + 14');
+  expect(textOf(first.events)).not.toContain('5,25');
   const next = start('Продолжай', {
     history: history('Помоги решить уравнение'),
   });
   await complete(next);
-  expect(textOf(next.events)).toContain('2x = 8');
-  expect(textOf(next.events)).not.toContain('x = 4');
-  const solved = start('Следующий шаг', {
+  expect(textOf(next.events)).toContain('6x − 7 = 2x + 14');
+  expect(textOf(next.events)).not.toContain('5,25');
+  const transfer = start('Дальше', {
     history: history('Помоги решить уравнение', 'Дальше'),
   });
-  await complete(solved);
-  expect(textOf(solved.events)).toContain('x = 4');
-  expect(textOf(solved.events)).toContain('2 · 4 + 6 = 14');
-  const repeated = start('Дальше', {
+  await complete(transfer);
+  expect(textOf(transfer.events)).toContain('4x = 21');
+  expect(textOf(transfer.events)).not.toContain('5,25');
+  const solved = start('Следующий шаг', {
     history: history('Помоги решить уравнение', 'Дальше', 'Дальше'),
+  });
+  await complete(solved);
+  expect(textOf(solved.events)).toContain('x = 21/4 = 5,25');
+  expect(textOf(solved.events)).toContain('19,5 + 5 = **24,5**');
+  expect(textOf(solved.events)).toContain('2 · 12,25 = **24,5**');
+  const repeated = start('Дальше', {
+    history: history('Помоги решить уравнение', 'Дальше', 'Дальше', 'Дальше'),
   });
   await complete(repeated);
   expect(textOf(repeated.events)).toContain('уже решено');
@@ -291,7 +296,7 @@ it('does not share context between concurrent requests on the same agent instanc
   const second = start('Дальше', { agent, chatId: 'b' });
   await complete(first);
   await second.finished;
-  expect(textOf(first.events)).toContain('2x = 8');
+  expect(textOf(first.events)).toContain('6x − 7 = 2x + 14');
   expect(textOf(second.events)).toContain('Какую задачу продолжить');
 });
 
@@ -299,26 +304,26 @@ it.each([
   {
     stage: 'queued',
     elapsed: 0,
-    prompt: 'Объясни закон Архимеда',
+    prompt: 'Объясни второй закон Ньютона',
     history: [],
   },
   {
     stage: 'processing',
     elapsed: 150,
-    prompt: 'Объясни закон Архимеда',
+    prompt: 'Объясни второй закон Ньютона',
     history: [],
   },
   {
     stage: 'image preparation',
     elapsed: 600,
     prompt: 'Покажи схему',
-    history: history('Объясни закон Архимеда', 'Проще'),
+    history: history('Объясни второй закон Ньютона', 'Проще'),
   },
   { stage: 'calculator', elapsed: 600, prompt: '17 × 24', history: [] },
   {
     stage: 'streaming',
     elapsed: 650,
-    prompt: 'Объясни закон Архимеда',
+    prompt: 'Объясни второй закон Ньютона',
     history: [],
   },
 ])(

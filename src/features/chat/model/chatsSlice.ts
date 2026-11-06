@@ -153,6 +153,7 @@ const chatsSlice = createSlice({
         chatId: string;
         user: UserMessage;
         assistant: AssistantMessage;
+        preserveDraft?: boolean;
       }>,
     ) {
       const chat = getChatById(state, payload.chatId);
@@ -170,7 +171,7 @@ const chatsSlice = createSlice({
         return;
       if (chat.messages.length === 0) chat.title = makeChatTitle(user.text);
       chat.messages.push(user, assistant);
-      chat.draft = '';
+      if (!payload.preserveDraft) chat.draft = '';
       chat.lastQuestionAt = user.createdAt;
       state.order = [chat.id, ...state.order.filter((id) => id !== chat.id)];
     },

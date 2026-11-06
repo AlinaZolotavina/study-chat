@@ -4,7 +4,10 @@ import {
   createInitialChatsState,
 } from '@/features/chat/model/helpers';
 import type { Run } from '@/features/chat/model/types';
-import { selectCanRetry } from '@/features/chat/model/selectors';
+import {
+  selectCanRetry,
+  selectChatSuggestions,
+} from '@/features/chat/model/selectors';
 import { lastAssistant, makeTurn, queuedRun, TEST_TIME } from '@/test/fixtures';
 import { loadChats, restoreInterrupted, STORAGE_KEY } from './chatStorage';
 
@@ -22,13 +25,86 @@ const activeRuns: Run[] = [
   { ...base, status: 'streaming' },
 ];
 
+it('restores a consumed equation question from history without adding serialized usage fields', () => {
+  const chat = createEmptyChat('a', TEST_TIME);
+  const start = makeTurn(
+    { ...queuedRun('start'), status: 'completed', finishedAt: TEST_TIME },
+    'equation',
+    'start',
+  );
+  start[0].text = 'Помоги решить уравнение';
+  const explanation = makeTurn(
+    { ...queuedRun('why'), status: 'completed', finishedAt: TEST_TIME },
+    'details',
+    'why',
+  );
+  explanation[0].text = 'Почему нужно раскрывать скобки?';
+  chat.messages = [...start, ...explanation];
+  chat.draft = 'keep draft';
+  const raw = JSON.stringify(createInitialChatsState(chat));
+  const restored = loadChats(
+    () => ({ getItem: () => raw, setItem: vi.fn() }),
+    () => RESTORED_AT,
+  );
+  if (!restored.ok || !restored.chats)
+    throw new Error('Expected restored chats');
+  expect(selectChatSuggestions({ chats: restored.chats }, chat.id)).toEqual([
+    'Дальше',
+  ]);
+  expect(restored.chats.byId.a?.messages).toHaveLength(4);
+  expect(restored.chats.byId.a?.draft).toBe('keep draft');
+  expect(raw).not.toContain('questionAnswered');
+});
+
+it('recomputes current suggestions after reload and hides them for interrupted responses', () => {
+  const chat = createEmptyChat('a', TEST_TIME);
+  const first = makeTurn(
+    { ...queuedRun('first'), status: 'completed', finishedAt: TEST_TIME },
+    'Newton explanation',
+    'first',
+  );
+  first[0].text = 'Объясни второй закон Ньютона';
+  const diagram = makeTurn(
+    { ...queuedRun('diagram'), status: 'completed', finishedAt: TEST_TIME },
+    'Diagram caption',
+    'diagram',
+  );
+  diagram[0].text = 'Покажи схему';
+  diagram[1].imageSrc = 'assets/newtons-2nd-law-of-motion.png';
+  chat.messages = [...first, ...diagram];
+  const storage = {
+    getItem: () => JSON.stringify(createInitialChatsState(chat)),
+    setItem: vi.fn(),
+  };
+  const load = () =>
+    loadChats(
+      () => storage,
+      () => RESTORED_AT,
+    );
+  const completed = load();
+  expect(completed.ok).toBe(true);
+  if (!completed.ok || !completed.chats)
+    throw new Error('Expected restored chats');
+  expect(selectChatSuggestions({ chats: completed.chats }, chat.id)).toEqual([
+    'Объясни проще',
+    'Приведи пример из жизни',
+  ]);
+  diagram[1].run = { ...queuedRun('diagram'), status: 'streaming' };
+  const active = load();
+  if (!active.ok || !active.chats)
+    throw new Error('Expected interrupted chats');
+  expect(lastAssistant(active.chats.byId.a).run.status).toBe('interrupted');
+  expect(selectChatSuggestions({ chats: active.chats }, chat.id)).toEqual([]);
+  expect(storage.setItem).not.toHaveBeenCalled();
+});
+
 it.each(activeRuns)(
   'restores $status without losing IDs, text, image or draft (%#)',
   (run) => {
     const chat = createEmptyChat('a', TEST_TIME);
     chat.draft = 'keep draft';
     const turn = makeTurn(run, 'partial');
-    turn[1].imageSrc = 'assets/Archimedes’ Principle Infographic (1).png';
+    turn[1].imageSrc = 'assets/newtons-2nd-law-of-motion.png';
     chat.messages = turn;
     const state = createInitialChatsState(chat);
     const before = structuredClone(state);
