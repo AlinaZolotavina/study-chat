@@ -11,7 +11,7 @@ if (!rootElement) {
   throw new Error('Не найден корневой элемент приложения.');
 }
 
-const store = createAppStore();
+const store = createAppStore({ storage: () => window.localStorage });
 
 import.meta.hot?.dispose(() => {
   void store.dispose();
