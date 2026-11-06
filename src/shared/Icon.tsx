@@ -1,5 +1,13 @@
 type IconName =
-  'plus' | 'send' | 'stop' | 'chat' | 'book' | 'down' | 'retry' | 'warning';
+  | 'plus'
+  | 'send'
+  | 'stop'
+  | 'chat'
+  | 'book'
+  | 'down'
+  | 'retry'
+  | 'warning'
+  | 'chevron';
 
 export function Icon({
   name,
@@ -16,6 +24,7 @@ export function Icon({
     down: 'M10 4v12m-5-5 5 5 5-5',
     retry: 'M16 7a6 6 0 1 0 0 6M16 3v4h-4',
     warning: 'm10 2 8 15H2L10 2Zm0 5v4m0 3v.5',
+    chevron: 'm6 8 4 4 4-4',
   };
   return (
     <svg

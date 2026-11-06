@@ -60,6 +60,70 @@ it('persists only initial chats in one key before rendering', () => {
   expect(storage.setItem).toHaveBeenCalledOnce();
 });
 
+it('restores an unread background reply and immediately persists reading it in the same key', () => {
+  const chat = createEmptyChat('unread', TEST_TIME);
+  chat.messages = makeTurn(
+    { ...queuedRun('unread-run'), status: 'completed', finishedAt: TEST_TIME },
+    'reply',
+  );
+  chat.unreadRunId = 'unread-run';
+  const chats = createInitialChatsState(chat);
+  const selected = createEmptyChat('selected', TEST_TIME);
+  chats.byId.selected = selected;
+  chats.order.push(selected.id);
+  chats.selectedChatId = selected.id;
+  const storage = memoryStorage(JSON.stringify(chats));
+  const restored = track(createAppStore({ storage: () => storage }));
+  expect(restored.getState().chats.byId.unread?.unreadRunId).toBe('unread-run');
+  restored.dispatch(chatActions.chatSelected('unread'));
+  expect(storage.setItem).toHaveBeenCalledExactlyOnceWith(
+    STORAGE_KEY,
+    JSON.stringify(restored.getState().chats),
+  );
+  const next = track(createAppStore({ storage: () => storage }));
+  expect(next.getState().chats.selectedChatId).toBe('unread');
+  expect(next.getState().chats.byId.unread?.unreadRunId).toBeUndefined();
+});
+
+it('restores actions and per-answer expansion through two stores in the same storage', () => {
+  const chat = createEmptyChat('saved', TEST_TIME);
+  const first = makeTurn(
+    {
+      ...queuedRun('first'),
+      status: 'completed',
+      finishedAt: TEST_TIME,
+      actions: [{ id: 'analysis', kind: 'analyzed', completedAt: TEST_TIME }],
+    },
+    'first',
+    'first',
+  );
+  chat.messages = [
+    ...first,
+    ...makeTurn(
+      { ...queuedRun('second'), status: 'completed', finishedAt: TEST_TIME },
+      'second',
+      'second',
+    ),
+  ];
+  const storage = memoryStorage(JSON.stringify(createInitialChatsState(chat)));
+  const initial = track(createAppStore({ storage: () => storage }));
+  initial.dispatch(
+    chatActions.executionExpandedChanged({
+      chatId: chat.id,
+      assistantMessageId: first[1].id,
+      runId: first[1].run.id,
+      expanded: true,
+    }),
+  );
+  const restored = track(createAppStore({ storage: () => storage }));
+  expect(restored.getState().chats.byId.saved?.messages[1]).toMatchObject({
+    run: { expanded: true, actions: first[1].run.actions },
+  });
+  expect(lastAssistant(restored.getState().chats.byId.saved).run.expanded).toBe(
+    false,
+  );
+});
+
 it('restores interrupted data and saves it without calling the agent', () => {
   const chat = createEmptyChat('saved', TEST_TIME);
   const turn = makeTurn(

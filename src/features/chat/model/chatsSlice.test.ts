@@ -95,6 +95,19 @@ it.each<{ reason: string; changes: Partial<AssistantMessage> }>([
     changes: { imageSrc: 'assets/example.png' },
   },
   {
+    reason: 'response already has completed actions',
+    changes: {
+      run: {
+        ...queuedRun(),
+        actions: [{ id: 'early', kind: 'analyzed', completedAt: TEST_TIME }],
+      },
+    },
+  },
+  {
+    reason: 'response starts expanded',
+    changes: { run: { ...queuedRun(), expanded: true } },
+  },
+  {
     reason: 'response is processing',
     changes: {
       run: {

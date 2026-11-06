@@ -11,7 +11,24 @@ function needsImmediateSave(previous: ChatsState, next: ChatsState) {
   )
     return true;
   return next.order.some((id) => {
-    const current = getLastAssistant(getChatById(next, id)?.messages ?? []);
+    const nextChat = getChatById(next, id);
+    const previousChat = getChatById(previous, id);
+    if (nextChat === previousChat) return false;
+    if (nextChat?.unreadRunId !== previousChat?.unreadRunId) return true;
+    if (
+      nextChat?.messages.some((message, index) => {
+        const before = previousChat?.messages[index];
+        return (
+          message.role === 'assistant' &&
+          before?.role === 'assistant' &&
+          message.id === before.id &&
+          message.run.id === before.run.id &&
+          message.run.expanded !== before.run.expanded
+        );
+      })
+    )
+      return true;
+    const current = getLastAssistant(nextChat?.messages ?? []);
     if (
       !current ||
       !['completed', 'cancelled', 'failed'].includes(current.run.status)

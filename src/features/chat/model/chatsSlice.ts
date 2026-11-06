@@ -38,6 +38,32 @@ function applyAgentEvent(message: AssistantMessage, event: AgentEvent) {
         phase: { kind: event.phase },
       };
       return;
+    case 'action_completed': {
+      if (
+        !event.actionId ||
+        !Number.isFinite(Date.parse(event.at)) ||
+        run.status === 'queued'
+      )
+        break;
+      if (run.actions.some((action) => action.id === event.actionId)) return;
+      const phase = run.status === 'processing' ? run.phase.kind : null;
+      const allowed =
+        (event.action === 'analyzed' && phase === 'analyzing') ||
+        (event.action === 'calculated' && phase === 'composing') ||
+        (event.action === 'image_prepared' &&
+          phase === 'composing' &&
+          message.imageSrc !== null) ||
+        (event.action === 'answer_composed' &&
+          run.status === 'streaming' &&
+          !!message.text.trim());
+      if (!allowed) break;
+      run.actions.push({
+        id: event.actionId,
+        kind: event.action,
+        completedAt: event.at,
+      });
+      return;
+    }
     case 'tool_call':
       if (
         run.status !== 'processing' ||
@@ -136,7 +162,10 @@ const chatsSlice = createSlice({
       state.selectedChatId = chat.id;
     },
     chatSelected(state, { payload: chatId }: PayloadAction<string>) {
-      if (getChatById(state, chatId)) state.selectedChatId = chatId;
+      const chat = getChatById(state, chatId);
+      if (!chat) return;
+      state.selectedChatId = chatId;
+      delete chat.unreadRunId;
     },
     draftChanged(
       state,
@@ -165,6 +194,8 @@ const chatsSlice = createSlice({
         assistant.replyToMessageId !== user.id ||
         assistant.id === user.id ||
         assistant.run.status !== 'queued' ||
+        assistant.run.actions.length !== 0 ||
+        assistant.run.expanded ||
         assistant.text !== '' ||
         assistant.imageSrc !== null
       )
@@ -190,7 +221,9 @@ const chatsSlice = createSlice({
       if (
         !message ||
         message.id !== payload.assistantMessageId ||
-        !canRetryMessage(message)
+        !canRetryMessage(message) ||
+        payload.run.actions.length !== 0 ||
+        payload.run.expanded
       )
         return;
       message.text = '';
@@ -221,10 +254,30 @@ const chatsSlice = createSlice({
         finishedAt: payload.at,
       };
     },
+    executionExpandedChanged(
+      state,
+      {
+        payload,
+      }: PayloadAction<{
+        chatId: string;
+        assistantMessageId: string;
+        runId: string;
+        expanded: boolean;
+      }>,
+    ) {
+      const chat = getChatById(state, payload.chatId);
+      const message = chat?.messages.find(
+        (item) => item.id === payload.assistantMessageId,
+      );
+      if (message?.role !== 'assistant' || message.run.id !== payload.runId)
+        return;
+      message.run.expanded = payload.expanded;
+    },
     agentEventReceived(state, { payload: event }: PayloadAction<AgentEvent>) {
       const chat = getChatById(state, event.chatId);
       const message = chat && getLastAssistant(chat.messages);
       if (
+        !chat ||
         !message ||
         message.id !== event.assistantMessageId ||
         message.run.id !== event.runId ||
@@ -232,6 +285,11 @@ const chatsSlice = createSlice({
       )
         return;
       applyAgentEvent(message, event);
+      const completedRun = getLastAssistant(chat.messages)?.run;
+      if (event.type === 'completed' && completedRun?.status === 'completed') {
+        if (state.selectedChatId === event.chatId) delete chat.unreadRunId;
+        else chat.unreadRunId = completedRun.id;
+      }
     },
     chatDeleted(
       state,
@@ -250,6 +308,8 @@ const chatsSlice = createSlice({
       } else if (state.selectedChatId === payload.chatId) {
         state.selectedChatId =
           state.order[index] ?? state.order[index - 1] ?? '';
+        const selected = getChatById(state, state.selectedChatId);
+        if (selected) delete selected.unreadRunId;
       }
     },
   },

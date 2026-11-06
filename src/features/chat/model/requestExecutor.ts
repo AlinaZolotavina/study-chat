@@ -189,6 +189,8 @@ export function createRequestExecutor(options: ExecutorOptions) {
       id: createId(),
       attempt: 1,
       acceptedAt: at,
+      actions: [],
+      expanded: false,
       status: 'queued',
     };
     const assistant: AssistantMessage = {
@@ -237,6 +239,8 @@ export function createRequestExecutor(options: ExecutorOptions) {
       id: createId(),
       attempt: message.run.attempt + 1,
       acceptedAt: now(),
+      actions: [],
+      expanded: false,
       status: 'queued',
     };
     const request: AgentRequest = {

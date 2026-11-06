@@ -9,7 +9,12 @@ import {
 } from './config';
 import { deriveContext } from './context';
 import { chooseScenario } from './scenarios';
-import type { Agent, AgentEvent, AgentEventData } from './types';
+import type {
+  Agent,
+  AgentActionKind,
+  AgentEvent,
+  AgentEventData,
+} from './types';
 
 interface MockAgentOptions {
   now?: () => string;
@@ -30,6 +35,8 @@ export function createMockAgent(options: MockAgentOptions = {}): Agent {
       runId: request.runId,
       at: now(),
     });
+    const actionCompleted = (action: AgentActionKind) =>
+      event({ type: 'action_completed', actionId: createId(), action });
     const scenario = chooseScenario(
       classifyCommand(request.prompt),
       deriveContext(request.history),
@@ -38,6 +45,7 @@ export function createMockAgent(options: MockAgentOptions = {}): Agent {
     await delay(timing.queuedMs, signal);
     yield event({ type: 'started' });
     await delay(timing.processingMs, signal);
+    yield actionCompleted('analyzed');
 
     let text: string;
     if (scenario.kind === 'calculator') {
@@ -69,6 +77,7 @@ export function createMockAgent(options: MockAgentOptions = {}): Agent {
         callId,
         output: { value },
       });
+      yield actionCompleted('calculated');
       await delay(timing.composingMs, signal);
       text = `**${scenario.left} × ${scenario.right} = ${value}**. Я проверил произведение с помощью калькулятора.`;
     } else {
@@ -77,6 +86,7 @@ export function createMockAgent(options: MockAgentOptions = {}): Agent {
         yield event({ type: 'phase_changed', phase: 'preparing_image' });
         await delay(timing.imageMs, signal);
         yield event({ type: 'image_received', imageSrc: NEWTON_IMAGE_SRC });
+        yield actionCompleted('image_prepared');
         await delay(timing.composingMs, signal);
       } else if (text)
         yield event({ type: 'phase_changed', phase: 'composing' });
@@ -92,6 +102,9 @@ export function createMockAgent(options: MockAgentOptions = {}): Agent {
     signal.throwIfAborted();
     if (scenario.kind === 'error')
       yield event({ type: 'error', error: scenario.error });
-    else yield event({ type: 'completed' });
+    else {
+      yield actionCompleted('answer_composed');
+      yield event({ type: 'completed' });
+    }
   };
 }

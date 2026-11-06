@@ -2,12 +2,12 @@ import { memo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { Icon } from '@/shared/Icon';
 import { retryResponse } from '../model/commands';
-import { isActiveRun } from '../model/helpers';
 import { getAgentStatusLabel, selectCanRetry } from '../model/selectors';
 import type { Message } from '../model/types';
 import { localImageUrl } from './contentPolicy';
 import { MarkdownContent } from './MarkdownContent';
 import { SuggestedReplies } from './SuggestedReplies';
+import { ExecutionStatus } from './ExecutionStatus';
 import styles from './ChatWorkspace.module.css';
 
 function MessageImage({ imageSrc }: { imageSrc: string }) {
@@ -54,7 +54,6 @@ export const MessageItem = memo(function MessageItem({
   );
   const assistant = message.role === 'assistant';
   const status = assistant ? getAgentStatusLabel(message.run) : null;
-  const active = assistant && isActiveRun(message.run);
   const failed = assistant && message.run.status === 'failed';
   return (
     <li className={assistant ? styles.assistantMessage : styles.userBubble}>
@@ -78,19 +77,14 @@ export const MessageItem = memo(function MessageItem({
               />
             )}
             {message.text && <MarkdownContent text={message.text} />}
-            {status && (
+            <ExecutionStatus chatId={chatId} message={message} />
+            {failed && (
               <div
                 className={`${styles.agentStatus} ${failed ? styles.errorText : ''}`}
                 role="status"
                 aria-atomic="true"
               >
-                {active && (
-                  <span
-                    className={styles.activityIndicator}
-                    aria-hidden="true"
-                  />
-                )}
-                {failed && <Icon name="warning" />}
+                <Icon name="warning" />
                 <span>{status}</span>
               </div>
             )}

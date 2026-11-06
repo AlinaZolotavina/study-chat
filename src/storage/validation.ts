@@ -1,9 +1,11 @@
 import { isLocalImageSrc } from '@/features/chat/model/helpers';
+import { AGENT_ACTION_KINDS } from '@/agent/types';
 import type {
   Chat,
   ChatsState,
   Message,
   Run,
+  CompletedAgentAction,
 } from '@/features/chat/model/types';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -13,6 +15,15 @@ const isId = (value: unknown): value is string =>
 const isTimestamp = (value: unknown): value is string =>
   typeof value === 'string' && Number.isFinite(Date.parse(value));
 
+function isCompletedAction(value: unknown): value is CompletedAgentAction {
+  return (
+    isRecord(value) &&
+    isId(value.id) &&
+    AGENT_ACTION_KINDS.some((kind) => kind === value.kind) &&
+    isTimestamp(value.completedAt)
+  );
+}
+
 function isRun(value: unknown): value is Run {
   if (
     !isRecord(value) ||
@@ -20,7 +31,12 @@ function isRun(value: unknown): value is Run {
     typeof value.attempt !== 'number' ||
     !Number.isInteger(value.attempt) ||
     value.attempt < 1 ||
-    !isTimestamp(value.acceptedAt)
+    !isTimestamp(value.acceptedAt) ||
+    typeof value.expanded !== 'boolean' ||
+    !Array.isArray(value.actions) ||
+    !value.actions.every(isCompletedAction) ||
+    new Set(value.actions.map((action) => action.id)).size !==
+      value.actions.length
   )
     return false;
   if (value.status === 'queued' || value.status === 'streaming') return true;
@@ -83,6 +99,7 @@ function isChat(value: unknown): value is Chat {
     isTimestamp(value.createdAt) &&
     (value.lastQuestionAt === null || isTimestamp(value.lastQuestionAt)) &&
     typeof value.draft === 'string' &&
+    (value.unreadRunId === undefined || isId(value.unreadRunId)) &&
     Array.isArray(value.messages) &&
     value.messages.every(isMessage)
   );

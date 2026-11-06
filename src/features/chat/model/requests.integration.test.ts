@@ -76,6 +76,10 @@ it('INT-01: sends once, streams and completes the real mock-agent response', asy
     status: 'completed',
   });
   expect(completed.text).toContain('F = m · a');
+  expect(completed.run.actions.map((action) => action.kind)).toEqual([
+    'analyzed',
+    'answer_composed',
+  ]);
   expect(completed.text.length).toBeGreaterThan(partial.text.length);
   expect(store.getState().chats.byId[chatId]?.messages).toHaveLength(2);
   expect(store.getState().chats.byId[chatId]?.draft).toBe('next question');

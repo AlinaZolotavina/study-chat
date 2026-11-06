@@ -336,6 +336,7 @@ it.each(['constructor', 'toString', '__proto__'])(
       title: chat.title,
       isActive: false,
       hasError: false,
+      hasUnreadReply: false,
     });
   },
 );

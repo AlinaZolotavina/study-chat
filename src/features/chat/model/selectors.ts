@@ -10,6 +10,7 @@ import {
   validateDraft,
 } from './helpers';
 import type { ChatRootState, Message, Run } from './types';
+import { getCompletedExecutionLabel } from './execution';
 
 const EMPTY_MESSAGES: readonly Message[] = Object.freeze([]);
 export const selectSelectedChat = (state: ChatRootState) =>
@@ -57,10 +58,14 @@ export const selectChatRowMetadata = createSelector(
     (state: ChatRootState, chatId: string) =>
       getLastAssistant(selectChatMessages(state, chatId))?.run.status ===
       'failed',
+    (state: ChatRootState, chatId: string) =>
+      !!getChatById(state.chats, chatId)?.unreadRunId,
     (_state: ChatRootState, chatId: string) => chatId,
   ],
-  (title, isActive, hasError, id) =>
-    title === undefined ? null : { id, title, isActive, hasError },
+  (title, isActive, hasError, hasUnreadReply, id) =>
+    title === undefined
+      ? null
+      : { id, title, isActive, hasError, hasUnreadReply },
 );
 
 export function selectAgentStatusLabel(
@@ -79,7 +84,7 @@ export function getAgentStatusLabel(run: Run): string | null {
     case 'streaming':
       return 'Пишу ответ…';
     case 'completed':
-      return null;
+      return getCompletedExecutionLabel(run);
     case 'cancelled':
       return 'Ответ остановлен';
     case 'interrupted':
@@ -98,7 +103,7 @@ export function getAgentStatusLabel(run: Run): string | null {
         case 'preparing_image':
           return 'Создаю схему…';
         case 'using_tool':
-          return 'Проверяю вычисление…';
+          return 'Использую калькулятор…';
         default: {
           const unreachable: never = phase;
           return unreachable;

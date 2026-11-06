@@ -22,27 +22,32 @@ const ChatRow = memo(function ChatRow({
     selectChatRowMetadata(state, chatId),
   );
   if (!metadata) return null;
+  const unread = !selected && metadata.hasUnreadReply;
+  const accessibleName = [
+    metadata.title,
+    metadata.isActive ? 'Формируется ответ' : '',
+    unread ? 'Новый ответ' : '',
+    metadata.hasError ? 'Ошибка ответа' : '',
+  ]
+    .filter(Boolean)
+    .join(', ');
   return (
     <li>
       <button
         type="button"
-        className={`${styles.chatRow} ${selected ? styles.selectedRow : ''}`}
+        className={`${styles.chatRow} ${selected ? styles.selectedRow : ''} ${metadata.isActive ? styles.generatingRow : ''}`}
         onClick={() => onSelect(chatId)}
         aria-current={selected ? 'true' : undefined}
+        aria-label={accessibleName}
         title={metadata.title}
       >
-        <Icon name="chat" />
-        <span className={styles.rowContent}>
-          <span className={styles.chatTitle}>{metadata.title}</span>
-          {metadata.isActive && (
-            <span className={styles.rowStatus}>
-              <span className={styles.statusDot} />
-              Готовит ответ
-            </span>
-          )}
-          {metadata.hasError && (
-            <span className={styles.rowError}>Ошибка ответа</span>
-          )}
+        <span className={styles.chatTitle}>{metadata.title}</span>
+        <span className={styles.chatMarker} aria-hidden="true">
+          {unread ? (
+            <span className={styles.unreadDot} />
+          ) : metadata.hasError ? (
+            <Icon name="warning" className={styles.rowError ?? ''} />
+          ) : null}
         </span>
       </button>
     </li>

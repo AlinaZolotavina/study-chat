@@ -1,4 +1,4 @@
-import type { AgentError, AgentPhase } from '@/agent/types';
+import type { AgentActionKind, AgentError, AgentPhase } from '@/agent/types';
 
 export type ChatId = string;
 export type MessageId = string;
@@ -6,10 +6,18 @@ export type RunId = string;
 export type ToolCallId = string;
 export type Timestamp = string;
 
+export interface CompletedAgentAction {
+  id: string;
+  kind: AgentActionKind;
+  completedAt: Timestamp;
+}
+
 export interface RunBase {
   id: RunId;
   attempt: number;
   acceptedAt: Timestamp;
+  actions: CompletedAgentAction[];
+  expanded: boolean;
 }
 
 export type ProcessingPhase =
@@ -59,6 +67,7 @@ export interface Chat {
   lastQuestionAt: Timestamp | null;
   draft: string;
   messages: Message[];
+  unreadRunId?: RunId;
 }
 
 export interface ChatsState {

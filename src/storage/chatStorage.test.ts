@@ -25,6 +25,26 @@ const activeRuns: Run[] = [
   { ...base, status: 'streaming' },
 ];
 
+it('preserves completed actions and expansion when restoring a streaming run as interrupted', () => {
+  const chat = createEmptyChat('a', TEST_TIME);
+  const run: Run = {
+    ...queuedRun(),
+    status: 'streaming',
+    expanded: true,
+    actions: [{ id: 'analysis', kind: 'analyzed', completedAt: TEST_TIME }],
+  };
+  chat.messages = makeTurn(run, 'partial');
+  const result = restoreInterrupted(
+    createInitialChatsState(chat),
+    () => RESTORED_AT,
+  );
+  expect(lastAssistant(result.chats.byId.a).run).toMatchObject({
+    status: 'interrupted',
+    expanded: true,
+    actions: run.actions,
+  });
+});
+
 it('restores a consumed equation question from history without adding serialized usage fields', () => {
   const chat = createEmptyChat('a', TEST_TIME);
   const start = makeTurn(
@@ -116,6 +136,8 @@ it.each(activeRuns)(
         id: run.id,
         attempt: run.attempt,
         acceptedAt: run.acceptedAt,
+        actions: run.actions,
+        expanded: run.expanded,
         status: 'interrupted',
         reason: 'reload',
         finishedAt: RESTORED_AT,

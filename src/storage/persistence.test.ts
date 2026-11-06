@@ -9,6 +9,8 @@ import {
   eventFor,
   pendingMeta,
   pendingState,
+  makeTurn,
+  queuedRun,
   TEST_TIME,
 } from '@/test/fixtures';
 import { STORAGE_KEY } from './chatStorage';
@@ -94,6 +96,36 @@ it('debounces streaming fragments and saves the accumulated partial result on a 
   expect(context.storage.setItem.mock.calls[0]?.[1]).toContain(
     'first second third',
   );
+});
+
+it('immediately persists expansion of an older answer and flushes the latest draft', () => {
+  const chat = createEmptyChat('a', TEST_TIME);
+  chat.messages = [
+    ...makeTurn(
+      { ...queuedRun('old'), status: 'completed', finishedAt: TEST_TIME },
+      'answer',
+      'old',
+    ),
+    ...makeTurn(queuedRun('active'), '', 'active'),
+  ];
+  const context = setup(createInitialChatsState(chat));
+  context.apply(
+    chatActions.draftChanged({ chatId: chat.id, draft: 'latest draft' }),
+  );
+  context.apply(
+    chatActions.executionExpandedChanged({
+      chatId: chat.id,
+      assistantMessageId: 'assistant-old',
+      runId: 'old',
+      expanded: true,
+    }),
+  );
+  expect(context.storage.setItem).toHaveBeenCalledExactlyOnceWith(
+    STORAGE_KEY,
+    JSON.stringify(context.state()),
+  );
+  expect(context.storage.setItem.mock.calls[0]?.[1]).toContain('latest draft');
+  expect(vi.getTimerCount()).toBe(0);
 });
 
 it.each(['completed', 'failed', 'cancelled'] as const)(

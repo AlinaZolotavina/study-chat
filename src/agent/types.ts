@@ -14,6 +14,14 @@ export interface AgentError {
 
 export type AgentPhase = 'analyzing' | 'preparing_image' | 'composing';
 
+export const AGENT_ACTION_KINDS = [
+  'analyzed',
+  'calculated',
+  'image_prepared',
+  'answer_composed',
+] as const;
+export type AgentActionKind = (typeof AGENT_ACTION_KINDS)[number];
+
 export interface AgentHistoryTurn {
   readonly userText: string;
   readonly assistantText: string;
@@ -38,6 +46,7 @@ export interface AgentEventMeta {
 export type AgentEventData =
   | { type: 'started' }
   | { type: 'phase_changed'; phase: AgentPhase }
+  | { type: 'action_completed'; actionId: string; action: AgentActionKind }
   | {
       type: 'tool_call';
       callId: string;

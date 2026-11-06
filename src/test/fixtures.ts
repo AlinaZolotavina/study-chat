@@ -43,7 +43,14 @@ export function makeTurn(
 }
 
 export function queuedRun(id = 'run-1') {
-  return { id, attempt: 1, acceptedAt: TEST_TIME, status: 'queued' } as const;
+  return {
+    id,
+    attempt: 1,
+    acceptedAt: TEST_TIME,
+    status: 'queued',
+    actions: [],
+    expanded: false,
+  } satisfies Run;
 }
 
 export function pendingState() {

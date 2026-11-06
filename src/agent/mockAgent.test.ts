@@ -95,6 +95,55 @@ it('streams Newton with observable delays and correctly addressed events (S-01)'
   expect(vi.getTimerCount()).toBe(0);
 });
 
+it.each([
+  {
+    prompt: 'Объясни второй закон Ньютона',
+    expected: ['analyzed', 'answer_composed'],
+    firstTextMs: 650,
+  },
+  {
+    prompt: '17 * 24',
+    expected: ['analyzed', 'calculated', 'answer_composed'],
+    firstTextMs: 1350,
+  },
+  {
+    prompt: 'Покажи схему',
+    expected: ['analyzed', 'image_prepared', 'answer_composed'],
+    firstTextMs: 1650,
+  },
+  { prompt: 'Покажи ошибку', expected: ['analyzed'], firstTextMs: null },
+  { prompt: 'Покажи обрыв ответа', expected: ['analyzed'], firstTextMs: 650 },
+])(
+  'reports only completed actions and preserves original text timing for $prompt',
+  async ({ prompt, expected, firstTextMs }) => {
+    const run = start(prompt, {
+      history:
+        prompt === 'Покажи схему'
+          ? history('Объясни второй закон Ньютона')
+          : [],
+    });
+    await complete(run);
+    const actions = run.events.filter(
+      (event) => event.type === 'action_completed',
+    );
+    expect(actions.map((action) => action.action)).toEqual(expected);
+    expect(new Set(actions.map((action) => action.actionId)).size).toBe(
+      actions.length,
+    );
+    const firstText = run.events.find((event) => event.type === 'text_delta');
+    if (firstTextMs === null) expect(firstText).toBeUndefined();
+    else
+      expect(firstText?.at).toBe(
+        new Date(Date.parse(TEST_TIME) + firstTextMs).toISOString(),
+      );
+    if (run.events.at(-1)?.type === 'completed')
+      expect(run.events.at(-2)).toMatchObject({
+        type: 'action_completed',
+        action: 'answer_composed',
+      });
+  },
+);
+
 it('does not split a Unicode code point between streamed fragments', async () => {
   const text = 'a'.repeat(15) + '🙂' + 'b'.repeat(16);
   vi.spyOn(scenarios, 'chooseScenario').mockReturnValueOnce({
@@ -140,9 +189,13 @@ it('prepares the supplied Newton image directly after the first explanation (S-0
     false,
   );
   await vi.advanceTimersByTimeAsync(1);
-  expect(run.events.at(-1)).toMatchObject({
+  expect(run.events.at(-2)).toMatchObject({
     type: 'image_received',
     imageSrc: NEWTON_IMAGE_SRC,
+  });
+  expect(run.events.at(-1)).toMatchObject({
+    type: 'action_completed',
+    action: 'image_prepared',
   });
   expect(textOf(run.events)).toBe('');
   expect(
@@ -223,7 +276,15 @@ it.each(['Сколько будет 17 × 24?', '17 * 24', '17 * 24.'])(
       run.events
         .filter((event) => event.type !== 'text_delta')
         .map((event) => event.type),
-    ).toEqual(['started', 'tool_call', 'tool_result', 'completed']);
+    ).toEqual([
+      'started',
+      'action_completed',
+      'tool_call',
+      'tool_result',
+      'action_completed',
+      'action_completed',
+      'completed',
+    ]);
     expect(textOf(run.events)).toContain('408');
     expect(call?.callId).toBeTruthy();
   },

@@ -86,67 +86,87 @@
   display: flex;
   width: 100%;
   min-height: 48px;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 12px 10px;
-  border: 1px solid transparent;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border: 0;
   border-radius: 8px;
   background: transparent;
   color: var(--color-text);
   text-align: left;
   cursor: pointer;
 }
-
-.chatRow > svg {
-  flex: 0 0 20px;
-  color: var(--color-text-muted);
-}
 .chatRow:hover {
-  background: rgb(255 255 255 / 60%);
-}
-.selectedRow {
-  background: var(--color-accent-subtle);
-  color: var(--color-focus);
-  border-color: var(--color-accent);
-}
-.selectedRow:hover {
-  background: var(--color-accent-subtle);
-}
-.selectedRow > svg {
   color: var(--color-accent);
-}
-.rowContent {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  flex-direction: column;
-  gap: 4px;
 }
 .chatTitle {
   display: block;
+  min-width: 0;
+  flex: 1;
   overflow: hidden;
+  padding: 9px 10px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.rowStatus {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--color-text-muted);
-  font-size: 13px;
+.selectedRow {
+  color: var(--color-focus);
+}
+.selectedRow .chatTitle {
+  background-color: var(--color-accent-subtle);
+}
+.generatingRow.selectedRow .chatTitle {
+  background-image: linear-gradient(
+    90deg,
+    transparent 25%,
+    rgb(79 70 229 / 18%) 50%,
+    transparent 75%
+  );
+  background-size: 250% 100%;
+  animation: chatTitleSweep 1800ms linear infinite;
+}
+.generatingRow:not(.selectedRow) .chatTitle {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-text-muted) 35%,
+    var(--color-accent) 50%,
+    var(--color-text-muted) 65%
+  );
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: chatTitleSweep 1800ms linear infinite;
+}
+.chatMarker {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  place-items: center;
+}
+.chatMarker > svg {
+  width: 16px;
+  height: 16px;
+}
+.unreadDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-unread);
 }
 .rowError {
   color: var(--color-danger);
-  font-size: 13px;
 }
-.statusDot {
-  width: 6px;
-  height: 6px;
-  flex: 0 0 6px;
-  border-radius: 50%;
-  background: var(--color-accent);
+@keyframes chatTitleSweep {
+  from {
+    background-position: 100% 50%;
+  }
+  to {
+    background-position: 0% 50%;
+  }
 }
 .sidebarFooter {
   padding: 16px;
@@ -509,6 +529,63 @@
   font-size: 14px;
   line-height: 1.45;
 }
+.execution {
+  margin-top: 8px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.executionToggle {
+  display: flex;
+  max-width: 100%;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.executionToggle:hover {
+  color: var(--color-text);
+}
+.executionChevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transition: transform 160ms;
+}
+.executionChevronExpanded {
+  transform: rotate(180deg);
+}
+.executionHistory {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 160ms;
+}
+.executionHistoryExpanded {
+  grid-template-rows: 1fr;
+}
+.executionHistoryInner {
+  min-height: 0;
+  overflow: hidden;
+}
+.executionActions {
+  margin: 0;
+  padding: 0 0 4px 24px;
+  overflow-wrap: anywhere;
+  list-style-type: disc;
+}
+.executionActions li {
+  padding: 3px 0;
+}
+.executionEmpty {
+  margin: 0;
+  padding: 0 0 8px;
+}
 .activityIndicator {
   width: 14px;
   height: 14px;
@@ -680,6 +757,20 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .generatingRow.selectedRow .chatTitle,
+  .generatingRow:not(.selectedRow) .chatTitle {
+    animation: none;
+    background-image: none;
+  }
+  .generatingRow:not(.selectedRow) .chatTitle {
+    color: var(--color-accent);
+    -webkit-text-fill-color: currentColor;
+  }
+
+  .executionChevron,
+  .executionHistory {
+    transition: none;
+  }
   .activityIndicator {
     animation: none;
   }

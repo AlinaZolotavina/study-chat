@@ -54,7 +54,13 @@ export function canRetryMessage(message: AssistantMessage) {
 }
 
 export function runBase(run: Run): RunBase {
-  return { id: run.id, attempt: run.attempt, acceptedAt: run.acceptedAt };
+  return {
+    id: run.id,
+    attempt: run.attempt,
+    acceptedAt: run.acceptedAt,
+    actions: run.actions,
+    expanded: run.expanded,
+  };
 }
 
 export function validateDraft(draft: string) {

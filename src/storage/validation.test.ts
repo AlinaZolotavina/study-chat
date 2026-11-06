@@ -26,6 +26,7 @@ it('rejects inconsistent chat IDs, order, drafts and message arrays', () => {
     { ...valid, order: ['missing'] },
     { ...valid, byId: { a: { ...chat, id: 'another' } } },
     { ...valid, byId: { a: { ...chat, draft: null } } },
+    { ...valid, byId: { a: { ...chat, unreadRunId: 42 } } },
     { ...valid, byId: { a: { ...chat, messages: {} } } },
     { ...valid, byId: { a: { ...chat, createdAt: 'not-a-date' } } },
   ];
@@ -41,6 +42,34 @@ it('rejects unsafe message/run fields instead of partially restoring them', () =
     { ...assistant, imageSrc: 'https://example.com/image.png' },
     { ...assistant, run: null },
     { ...assistant, run: { ...queuedRun(), attempt: 0 } },
+    { ...assistant, run: { ...queuedRun(), expanded: 'true' } },
+    { ...assistant, run: { ...queuedRun(), actions: null } },
+    {
+      ...assistant,
+      run: {
+        ...queuedRun(),
+        actions: [{ id: 'action', kind: 'secret', completedAt: TEST_TIME }],
+      },
+    },
+    {
+      ...assistant,
+      run: {
+        ...queuedRun(),
+        actions: [
+          { id: 'action', kind: 'analyzed', completedAt: 'invalid-date' },
+        ],
+      },
+    },
+    {
+      ...assistant,
+      run: {
+        ...queuedRun(),
+        actions: [
+          { id: 'same', kind: 'analyzed', completedAt: TEST_TIME },
+          { id: 'same', kind: 'analyzed', completedAt: TEST_TIME },
+        ],
+      },
+    },
     {
       ...assistant,
       run: { ...queuedRun(), status: 'processing', phase: null },
