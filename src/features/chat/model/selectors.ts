@@ -97,11 +97,11 @@ export function getAgentStatusLabel(run: Run): string | null {
       const phase = run.phase.kind;
       switch (phase) {
         case 'analyzing':
-          return 'Разбираюсь с вопросом…';
+          return 'Думаю над вопросом…';
         case 'composing':
           return 'Готовлю ответ…';
         case 'preparing_image':
-          return 'Создаю схему…';
+          return 'Создаю изображение…';
         case 'using_tool':
           return 'Использую калькулятор…';
         default: {

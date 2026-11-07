@@ -1,8 +1,15 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { createAppStore, type AppStore } from '@/app/store';
-import { MOCK_TIMING } from '@/agent/config';
+import { createMockAgent } from '@/agent/mockAgent';
 import { createControlledAgent } from '@/test/controlledAgent';
-import { createIds, eventFor, lastAssistant, TEST_TIME } from '@/test/fixtures';
+import {
+  createIds,
+  eventFor,
+  lastAssistant,
+  TEST_TIME,
+  FIXED_MOCK_TIMING,
+  FIXED_STREAMING,
+} from '@/test/fixtures';
 import { chatActions } from './chatsSlice';
 import {
   createChat,
@@ -35,7 +42,20 @@ afterEach(async () => {
 
 it('INT-01: sends once, streams and completes the real mock-agent response', async () => {
   vi.useFakeTimers();
-  const store = createAppStore({ now: () => TEST_TIME, createId: createIds() });
+  vi.setSystemTime(new Date(TEST_TIME));
+  const createId = createIds();
+  const now = () => new Date().toISOString();
+  const store = createAppStore({
+    now,
+    createId,
+    agent: createMockAgent({
+      now,
+      createId,
+      timing: FIXED_MOCK_TIMING,
+      streaming: FIXED_STREAMING,
+      random: () => 0.5,
+    }),
+  });
   stores.push(store);
   const chatId = store.getState().chats.selectedChatId;
   store.dispatch(
@@ -59,12 +79,14 @@ it('INT-01: sends once, streams and completes the real mock-agent response', asy
   expect(accepted.id).not.toBe(accepted.replyToMessageId);
   store.dispatch(chatActions.draftChanged({ chatId, draft: 'next question' }));
   expect(store.dispatch(sendMessage(chatId))).toBe(false);
-  await vi.advanceTimersByTimeAsync(MOCK_TIMING.queuedMs);
+  await vi.advanceTimersByTimeAsync(FIXED_MOCK_TIMING.queuedMs);
   expect(lastAssistant(store.getState().chats.byId[chatId]).run.status).toBe(
     'processing',
   );
   await vi.advanceTimersByTimeAsync(
-    MOCK_TIMING.processingMs + MOCK_TIMING.chunkMs,
+    FIXED_MOCK_TIMING.analysisMs.minMs +
+      FIXED_MOCK_TIMING.composingMs.minMs +
+      200,
   );
   const partial = lastAssistant(store.getState().chats.byId[chatId]);
   expect(partial.run.status).toBe('streaming');

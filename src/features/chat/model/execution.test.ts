@@ -16,19 +16,22 @@ import { getAgentStatusLabel } from './selectors';
 import type { ChatsState } from './types';
 
 it.each([
-  { ms: -1000, label: 'менее секунды' },
-  { ms: 0, label: 'менее секунды' },
-  { ms: 999, label: 'менее секунды' },
-  { ms: 1000, label: '1 секунду' },
-  { ms: 1999, label: '1 секунду' },
-  { ms: 2000, label: '2 секунды' },
-  { ms: 5000, label: '5 секунд' },
-  { ms: 11000, label: '11 секунд' },
-  { ms: 21000, label: '21 секунду' },
-  { ms: 22000, label: '22 секунды' },
-  { ms: 25000, label: '25 секунд' },
+  { ms: -1000, label: '0,0 сек' },
+  { ms: 0, label: '0,0 сек' },
+  { ms: 999, label: '1,0 сек' },
+  { ms: 1000, label: '1,0 сек' },
+  { ms: 1999, label: '2,0 сек' },
+  { ms: 2000, label: '2,0 сек' },
+  { ms: 4200, label: '4,2 сек' },
+  { ms: 50, label: '0,1 сек' },
+  { ms: Number.NaN, label: '0,0 сек' },
+  { ms: 5000, label: '5,0 сек' },
+  { ms: 11000, label: '11,0 сек' },
+  { ms: 21000, label: '21,0 сек' },
+  { ms: 22000, label: '22,0 сек' },
+  { ms: 25000, label: '25,0 сек' },
   { ms: 60000, label: '1 минуту' },
-  { ms: 72000, label: '1 минуту 12 секунд' },
+  { ms: 72000, label: '1 минуту 12,0 сек' },
   { ms: 120000, label: '2 минуты' },
   { ms: 300000, label: '5 минут' },
 ])('formats elapsed duration $ms ms as $label', ({ ms, label }) => {
@@ -49,6 +52,9 @@ const analysis: AgentEventData = {
 
 it('preserves chronological actions and expansion through phases, streaming and completion', () => {
   let state = apply(pendingState(), { type: 'started' });
+  expect(getAgentStatusLabel(lastAssistant(state.byId['chat-a']).run)).toBe(
+    'Думаю над вопросом…',
+  );
   expect(lastAssistant(state.byId['chat-a']).run.actions).toEqual([]);
   state = apply(state, analysis);
   expect(apply(state, analysis)).toBe(state);
@@ -257,5 +263,5 @@ it('calculates completion time from acceptance, including queueing and streaming
       status: 'completed',
       finishedAt: new Date(Date.parse(TEST_TIME) + 72000).toISOString(),
     }),
-  ).toBe('Думал 1 минуту 12 секунд');
+  ).toBe('Думал 1 минуту 12,0 сек');
 });

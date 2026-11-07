@@ -137,7 +137,6 @@
 .newChatButton:hover {
   background: var(--color-accent-hover);
 }
-.retryButton:hover,
 .jumpBar button:hover {
   background: var(--color-canvas);
 }
@@ -168,7 +167,7 @@
   min-height: 48px;
   align-items: center;
   gap: 8px;
-  padding: 4px 0;
+  padding: 4px 8px 4px 0;
   border: 0;
   border-radius: 14px;
   background: transparent;
@@ -462,10 +461,12 @@
   cursor: pointer;
   transition: background 140ms;
 }
-.errorExamples button:hover:not(:disabled) {
+.errorExamples button:hover:not(:disabled),
+.retryButton:hover {
   background: var(--color-accent-hover);
 }
-.errorExamples button:active:not(:disabled) {
+.errorExamples button:active:not(:disabled),
+.retryButton:active {
   box-shadow: inset 0 2px 4px rgb(0 0 0 / 12%);
 }
 .errorExamples button:disabled {
@@ -689,20 +690,11 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
-.agentAvatar {
-  display: grid;
-  width: 22px;
-  height: 22px;
-  flex: 0 0 22px;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--gradient-accent);
-  color: var(--color-on-accent);
-  font-size: 13px;
-}
-.agentAvatar svg {
-  width: 14px;
-  height: 14px;
+.agentMark {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  color: var(--color-accent);
 }
 .userText {
   margin: 0;
@@ -860,23 +852,54 @@
 }
 .retryButton {
   margin-top: 12px;
+  border-color: transparent;
+  border-radius: 10px;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  transition: background 140ms;
 }
 .imageFigure {
   max-width: 640px;
   margin: 0 0 16px;
 }
+.imageFrame {
+  position: relative;
+  aspect-ratio: 1672 / 941;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-option-surface);
+}
+.imagePlaceholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
 .imageFigure img {
   display: block;
   width: 100%;
   height: auto;
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
 }
-.imageFigure figcaption {
-  margin-top: 8px;
-  color: var(--color-text-muted);
-  font-size: 14px;
-  line-height: 1.45;
+.imageLoading {
+  opacity: 0;
+}
+.imageReveal {
+  animation: imageReveal 1200ms ease-out both;
+}
+@keyframes imageReveal {
+  from {
+    filter: blur(16px);
+    opacity: 0.25;
+  }
+  to {
+    filter: blur(0);
+    opacity: 1;
+  }
 }
 .imageError {
   margin: 0;
@@ -1017,6 +1040,9 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .imageReveal {
+    animation: none;
+  }
   .aboutDialog,
   .aboutDialog::backdrop,
   .aboutDialog[data-closing],

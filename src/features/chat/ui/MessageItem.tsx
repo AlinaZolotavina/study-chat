@@ -10,29 +10,51 @@ import { SuggestedReplies } from './SuggestedReplies';
 import { ExecutionStatus } from './ExecutionStatus';
 import styles from './ChatWorkspace.module.css';
 
-function MessageImage({ imageSrc }: { imageSrc: string }) {
+function MessageImage({ imageSrc }: { imageSrc: string | null }) {
   const [failed, setFailed] = useState(false);
-  const src = localImageUrl(imageSrc, import.meta.env.BASE_URL);
+  const [loaded, setLoaded] = useState(false);
+  const [live] = useState(imageSrc === null);
+  const [revealing, setRevealing] = useState(false);
+  const src = imageSrc && localImageUrl(imageSrc, import.meta.env.BASE_URL);
+  const error = failed || (!!imageSrc && !src);
   return (
     <figure className={styles.imageFigure}>
-      {failed || !src ? (
-        <p role="status" className={styles.imageError}>
-          Не удалось загрузить изображение
-        </p>
-      ) : (
-        <img
-          src={src}
-          width={1672}
-          height={941}
-          alt="Второй закон Ньютона: сила и ускорение направлены одинаково; a = F / m. При той же массе удвоение силы удваивает ускорение, при той же силе удвоение массы уменьшает его вдвое."
-          loading="lazy"
-          onError={() => setFailed(true)}
-        />
-      )}
-      <figcaption>
-        Второй закон Ньютона: ускорение зависит от равнодействующей силы и массы
-        тела.
-      </figcaption>
+      <div className={styles.imageFrame} aria-busy={!loaded && !error}>
+        {error ? (
+          <p role="status" className={styles.imageError}>
+            Не удалось загрузить изображение
+          </p>
+        ) : (
+          <>
+            {!loaded && (
+              <div className={styles.imagePlaceholder} role="status">
+                <span className={styles.activityIndicator} aria-hidden="true" />
+                {imageSrc ? 'Загружаю изображение…' : 'Создаю изображение…'}
+              </div>
+            )}
+            {src && (
+              <img
+                src={src}
+                className={`${!loaded ? styles.imageLoading : ''} ${revealing ? styles.imageReveal : ''}`}
+                width={1672}
+                height={941}
+                alt="Второй закон Ньютона: сила и ускорение направлены одинаково; a = F / m. При той же массе удвоение силы удваивает ускорение, при той же силе удвоение массы уменьшает его вдвое."
+                loading="lazy"
+                onLoad={() => {
+                  setLoaded(true);
+                  setRevealing(
+                    live &&
+                      !window.matchMedia('(prefers-reduced-motion: reduce)')
+                        .matches,
+                  );
+                }}
+                onAnimationEnd={() => setRevealing(false)}
+                onError={() => setFailed(true)}
+              />
+            )}
+          </>
+        )}
+      </div>
     </figure>
   );
 }
@@ -55,14 +77,16 @@ export const MessageItem = memo(function MessageItem({
   const assistant = message.role === 'assistant';
   const status = assistant ? getAgentStatusLabel(message.run) : null;
   const failed = assistant && message.run.status === 'failed';
+  const preparingImage =
+    assistant &&
+    message.run.status === 'processing' &&
+    message.run.phase.kind === 'preparing_image';
   return (
     <li className={assistant ? styles.assistantMessage : styles.userBubble}>
       <article aria-labelledby={`author-${message.id}`}>
         <div className={styles.messageAuthor} id={`author-${message.id}`}>
           {assistant && (
-            <span className={styles.agentAvatar} aria-hidden="true">
-              <Icon name="sparkle" />
-            </span>
+            <Icon name="sparkle" className={styles.agentMark ?? ''} />
           )}
           {assistant ? 'LOM AI' : 'Вы'}
         </div>
@@ -70,11 +94,8 @@ export const MessageItem = memo(function MessageItem({
           <p className={styles.userText}>{message.text}</p>
         ) : (
           <>
-            {message.imageSrc && (
-              <MessageImage
-                key={`${message.run.id}:${message.imageSrc}`}
-                imageSrc={message.imageSrc}
-              />
+            {(message.imageSrc || preparingImage) && (
+              <MessageImage key={message.run.id} imageSrc={message.imageSrc} />
             )}
             {message.text && <MarkdownContent text={message.text} />}
             <ExecutionStatus chatId={chatId} message={message} />

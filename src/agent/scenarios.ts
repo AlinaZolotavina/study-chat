@@ -78,7 +78,7 @@ export function chooseScenario(
       if (context.topic === 'newton')
         return {
           kind: 'image',
-          text: 'На схеме показан второй закон Ньютона: **a = F / m**. Стрелки силы и ускорения направлены одинаково. При той же массе удвоение равнодействующей силы удваивает ускорение; при той же силе удвоение массы уменьшает ускорение вдвое.',
+          text: '',
         };
       return fallback(context);
     case 'life_example':

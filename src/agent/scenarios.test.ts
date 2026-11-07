@@ -23,7 +23,7 @@ function text(prompt: string, ...previous: string[]) {
 
 it.each([
   { prompt: 'Проще', fragment: 'тележку', kind: 'text' },
-  { prompt: 'Покажи схему', fragment: 'a = F / m', kind: 'image' },
+  { prompt: 'Покажи схему', fragment: '', kind: 'image' },
   {
     prompt: 'Приведи пример из жизни',
     fragment: 'футбольному мячу',
@@ -38,7 +38,7 @@ it.each([
     ]) {
       expect(answer(prompt, ...previous)).toMatchObject({
         kind,
-        text: expect.stringContaining(fragment),
+        text: kind === 'image' ? '' : expect.stringContaining(fragment),
       });
     }
   },

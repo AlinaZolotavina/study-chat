@@ -21,6 +21,11 @@ const initialState: ChatsState = { byId: {}, order: [], selectedChatId: '' };
 
 function applyAgentEvent(message: AssistantMessage, event: AgentEvent) {
   const run = message.run;
+  const responseReady =
+    (run.status === 'streaming' && !!message.text.trim()) ||
+    (message.imageSrc !== null &&
+      (run.status === 'streaming' ||
+        (run.status === 'processing' && run.phase.kind === 'composing')));
   switch (event.type) {
     case 'started':
       if (run.status !== 'queued') break;
@@ -53,9 +58,7 @@ function applyAgentEvent(message: AssistantMessage, event: AgentEvent) {
         (event.action === 'image_prepared' &&
           phase === 'composing' &&
           message.imageSrc !== null) ||
-        (event.action === 'answer_composed' &&
-          run.status === 'streaming' &&
-          !!message.text.trim());
+        (event.action === 'answer_composed' && responseReady);
       if (!allowed) break;
       run.actions.push({
         id: event.actionId,
@@ -123,7 +126,7 @@ function applyAgentEvent(message: AssistantMessage, event: AgentEvent) {
       message.run = { ...runBase(run), status: 'streaming' };
       return;
     case 'completed':
-      if (run.status !== 'streaming' || !message.text.trim()) break;
+      if (!responseReady) break;
       message.run = {
         ...runBase(run),
         status: 'completed',

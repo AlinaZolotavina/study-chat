@@ -4,7 +4,7 @@ import type { Run } from './types';
 export const AGENT_ACTION_LABELS: Readonly<Record<AgentActionKind, string>> = {
   analyzed: 'Проанализировал запрос',
   calculated: 'Выполнил вычисление с помощью калькулятора',
-  image_prepared: 'Подготовил схему',
+  image_prepared: 'Создал изображение',
   answer_composed: 'Сформировал ответ',
 };
 
@@ -23,13 +23,15 @@ function counted(value: number, forms: readonly [string, string, string]) {
 }
 
 export function formatExecutionDuration(milliseconds: number) {
-  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
-  if (totalSeconds === 0) return 'менее секунды';
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
+  const tenths = Number.isFinite(milliseconds)
+    ? Math.max(0, Math.round(milliseconds / 100))
+    : 0;
+  const minutes = Math.floor(tenths / 600);
+  const seconds = (tenths % 600) / 10;
+  const secondsLabel = `${seconds.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} сек`;
   return [
     ...(minutes ? [counted(minutes, ['минуту', 'минуты', 'минут'])] : []),
-    ...(seconds ? [counted(seconds, ['секунду', 'секунды', 'секунд'])] : []),
+    ...(!minutes || seconds ? [secondsLabel] : []),
   ].join(' ');
 }
 

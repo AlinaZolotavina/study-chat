@@ -1,9 +1,14 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { existsSync } from 'node:fs';
-import { createIds, TEST_TIME } from '@/test/fixtures';
+import {
+  createIds,
+  TEST_TIME,
+  FIXED_MOCK_TIMING,
+  FIXED_STREAMING,
+} from '@/test/fixtures';
 import * as calculator from './calculator';
 import * as scenarios from './scenarios';
-import { NEWTON_IMAGE_SRC, MOCK_TIMING } from './config';
+import { NEWTON_IMAGE_SRC } from './config';
 import { createMockAgent } from './mockAgent';
 import type { Agent, AgentEvent, AgentRequest } from './types';
 
@@ -25,7 +30,13 @@ function start(
     history: options.history ?? [],
   };
   const agent =
-    options.agent ?? createMockAgent({ createId: createIds('tool') });
+    options.agent ??
+    createMockAgent({
+      createId: createIds('tool'),
+      timing: FIXED_MOCK_TIMING,
+      streaming: FIXED_STREAMING,
+      random: () => 0.5,
+    });
   const controller = new AbortController();
   const events: AgentEvent[] = [];
   const finished = (async () => {
@@ -58,26 +69,29 @@ afterEach(async () => {
 it('streams Newton with observable delays and correctly addressed events (S-01)', async () => {
   const run = start('Объясни второй закон Ньютона');
   expect(run.events).toEqual([]);
-  await vi.advanceTimersByTimeAsync(MOCK_TIMING.queuedMs - 1);
+  await vi.advanceTimersByTimeAsync(FIXED_MOCK_TIMING.queuedMs - 1);
   expect(run.events).toEqual([]);
   await vi.advanceTimersByTimeAsync(1);
   expect(run.events.map((event) => event.type)).toEqual(['started']);
-  await vi.advanceTimersByTimeAsync(MOCK_TIMING.processingMs);
+  await vi.advanceTimersByTimeAsync(FIXED_MOCK_TIMING.analysisMs.minMs);
   expect(run.events.at(-1)).toMatchObject({
     type: 'phase_changed',
     phase: 'composing',
   });
   expect(textOf(run.events)).toBe('');
-  await vi.advanceTimersByTimeAsync(MOCK_TIMING.chunkMs);
-  expect(Array.from(textOf(run.events))).toHaveLength(16);
+  await vi.advanceTimersByTimeAsync(FIXED_MOCK_TIMING.composingMs.minMs - 1);
+  expect(textOf(run.events)).toBe('');
+  await vi.advanceTimersByTimeAsync(201);
+  expect(textOf(run.events).length).toBeGreaterThan(0);
+  expect(run.events.at(-1)?.type).toBe('text_delta');
   await complete(run);
   expect(textOf(run.events)).toContain('F = m · a');
   const deltas = run.events.filter((event) => event.type === 'text_delta');
   expect(deltas.length).toBeGreaterThan(2);
-  for (const [index, delta] of deltas.entries()) {
+  for (const delta of deltas) {
     const length = Array.from(delta.text).length;
-    expect(length).toBeLessThanOrEqual(20);
-    expect(length).toBeGreaterThanOrEqual(index === deltas.length - 1 ? 1 : 8);
+    expect(length).toBeLessThanOrEqual(16);
+    expect(length).toBeGreaterThanOrEqual(1);
   }
   expect(run.events.at(-1)?.type).toBe('completed');
   expect(run.events.some((event) => event.type === 'image_received')).toBe(
@@ -90,7 +104,7 @@ it('streams Newton with observable delays and correctly addressed events (S-01)'
       runId: run.request.runId,
     });
   expect(run.events[0]?.at).toBe(
-    new Date(Date.parse(TEST_TIME) + MOCK_TIMING.queuedMs).toISOString(),
+    new Date(Date.parse(TEST_TIME) + FIXED_MOCK_TIMING.queuedMs).toISOString(),
   );
   expect(vi.getTimerCount()).toBe(0);
 });
@@ -99,22 +113,22 @@ it.each([
   {
     prompt: 'Объясни второй закон Ньютона',
     expected: ['analyzed', 'answer_composed'],
-    firstTextMs: 650,
+    firstTextMs: 800,
   },
   {
     prompt: '17 * 24',
     expected: ['analyzed', 'calculated', 'answer_composed'],
-    firstTextMs: 1350,
+    firstTextMs: 1500,
   },
   {
     prompt: 'Покажи схему',
     expected: ['analyzed', 'image_prepared', 'answer_composed'],
-    firstTextMs: 1650,
+    firstTextMs: null,
   },
   { prompt: 'Покажи ошибку', expected: ['analyzed'], firstTextMs: null },
-  { prompt: 'Покажи обрыв ответа', expected: ['analyzed'], firstTextMs: 650 },
+  { prompt: 'Покажи обрыв ответа', expected: ['analyzed'], firstTextMs: 800 },
 ])(
-  'reports only completed actions and preserves original text timing for $prompt',
+  'reports completed actions only after their operation, before final completion: $prompt',
   async ({ prompt, expected, firstTextMs }) => {
     const run = start(prompt, {
       history:
@@ -133,9 +147,9 @@ it.each([
     const firstText = run.events.find((event) => event.type === 'text_delta');
     if (firstTextMs === null) expect(firstText).toBeUndefined();
     else
-      expect(firstText?.at).toBe(
-        new Date(Date.parse(TEST_TIME) + firstTextMs).toISOString(),
-      );
+      expect(
+        Date.parse(firstText?.at ?? '') - Date.parse(TEST_TIME),
+      ).toBeGreaterThanOrEqual(firstTextMs);
     if (run.events.at(-1)?.type === 'completed')
       expect(run.events.at(-2)).toMatchObject({
         type: 'action_completed',
@@ -175,7 +189,7 @@ it('prepares the supplied Newton image directly after the first explanation (S-0
     history: history('Объясни второй закон Ньютона'),
   });
   await vi.advanceTimersByTimeAsync(
-    MOCK_TIMING.queuedMs + MOCK_TIMING.processingMs,
+    FIXED_MOCK_TIMING.queuedMs + FIXED_MOCK_TIMING.analysisMs.minMs,
   );
   expect(run.events.at(-1)).toMatchObject({
     type: 'phase_changed',
@@ -184,16 +198,23 @@ it('prepares the supplied Newton image directly after the first explanation (S-0
   expect(run.events.some((event) => event.type === 'image_received')).toBe(
     false,
   );
-  await vi.advanceTimersByTimeAsync(MOCK_TIMING.imageMs - 1);
+  await vi.advanceTimersByTimeAsync(FIXED_MOCK_TIMING.imageMs.minMs - 1);
   expect(run.events.some((event) => event.type === 'image_received')).toBe(
     false,
   );
   await vi.advanceTimersByTimeAsync(1);
-  expect(run.events.at(-2)).toMatchObject({
+  expect(
+    run.events.find((event) => event.type === 'image_received'),
+  ).toMatchObject({
     type: 'image_received',
     imageSrc: NEWTON_IMAGE_SRC,
   });
-  expect(run.events.at(-1)).toMatchObject({
+  expect(
+    run.events.find(
+      (event) =>
+        event.type === 'action_completed' && event.action === 'image_prepared',
+    ),
+  ).toMatchObject({
     type: 'action_completed',
     action: 'image_prepared',
   });
@@ -202,7 +223,8 @@ it('prepares the supplied Newton image directly after the first explanation (S-0
     existsSync(new URL(`../../public/${NEWTON_IMAGE_SRC}`, import.meta.url)),
   ).toBe(true);
   await complete(run);
-  expect(textOf(run.events)).toContain('a = F / m');
+  expect(textOf(run.events)).toBe('');
+  expect(run.events.some((event) => event.type === 'text_delta')).toBe(false);
   expect(
     run.events.filter((event) => event.type === 'image_received'),
   ).toHaveLength(1);
@@ -308,6 +330,205 @@ it('normalizes a tool failure without leaking internal details', async () => {
   expect(JSON.stringify(run.events)).not.toContain('private tool error');
 });
 
+it('keeps calculator use and result delivery sequential under one tool operation', async () => {
+  const run = start('17 * 24');
+  await vi.advanceTimersByTimeAsync(600);
+  expect(run.events.at(-1)?.type).toBe('tool_call');
+  await vi.advanceTimersByTimeAsync(699);
+  expect(run.events.some((event) => event.type === 'tool_result')).toBe(false);
+  await vi.advanceTimersByTimeAsync(1);
+  expect(run.events.at(-2)).toMatchObject({
+    type: 'tool_result',
+    output: { value: 408 },
+  });
+  expect(run.events.at(-1)).toMatchObject({
+    type: 'action_completed',
+    action: 'calculated',
+  });
+  expect(textOf(run.events)).toBe('');
+  await complete(run);
+  expect(run.events.filter((event) => event.type === 'tool_call')).toHaveLength(
+    1,
+  );
+  expect(
+    run.events.filter(
+      (event) =>
+        event.type === 'action_completed' && event.action === 'calculated',
+    ),
+  ).toHaveLength(1);
+});
+
+it.each([
+  { random: 0, analysis: 450, result: 700, image: 2950 },
+  { random: 0.999999, analysis: 750, result: 1250, image: 4250 },
+])(
+  'uses configurable operation ranges and additional non-overlapping image time: $random',
+  async ({ random, analysis, result, image }) => {
+    const agent = createMockAgent({
+      random: () => random,
+      createId: createIds('range'),
+    });
+    const calc = start('17 * 24', { agent });
+    const beginning = Date.now();
+    await complete(calc);
+    const after = (type: string) =>
+      Date.parse(calc.events.find((event) => event.type === type)?.at ?? '') -
+      beginning;
+    expect(
+      Date.parse(
+        calc.events.find(
+          (event) =>
+            event.type === 'action_completed' && event.action === 'analyzed',
+        )?.at ?? '',
+      ) - beginning,
+    ).toBe(analysis);
+    expect(after('tool_result')).toBe(result);
+    const picture = start('Покажи схему', {
+      agent,
+      history: history('Объясни второй закон Ньютона'),
+    });
+    const pictureStart = Date.now();
+    await complete(picture);
+    const ready = Date.parse(
+      picture.events.find((event) => event.type === 'image_received')?.at ?? '',
+    );
+    expect(ready - pictureStart).toBe(image);
+    expect(picture.events.some((event) => event.type === 'text_delta')).toBe(
+      false,
+    );
+    expect(Date.parse(picture.events.at(-1)?.at ?? '')).toBe(ready);
+    expect(
+      picture.events
+        .filter((event) => event.type === 'action_completed')
+        .map((event) => event.action),
+    ).toEqual(['analyzed', 'image_prepared', 'answer_composed']);
+  },
+);
+
+it('finishes even the slowest calculator response below 3 seconds and before the fastest image request', async () => {
+  const slowCalculator = createMockAgent({
+    random: () => 0.999999,
+    createId: createIds('slow-calculator'),
+  });
+  const fastImage = createMockAgent({
+    random: () => 0,
+    createId: createIds('fast-image'),
+  });
+  const picture = start('Покажи схему', {
+    agent: fastImage,
+    history: history('Объясни второй закон Ньютона'),
+  });
+  const pictureStart = Date.now();
+  await complete(picture);
+  const imageDuration =
+    Date.parse(picture.events.at(-1)?.at ?? '') - pictureStart;
+  for (const prompt of [
+    '17 * 24',
+    '-10000 * 10000',
+    '-10000 * -10000',
+    '0 * 0',
+  ]) {
+    const beginning = Date.now();
+    const run = start(prompt, { agent: slowCalculator });
+    await complete(run);
+    const elapsed = Date.parse(run.events.at(-1)?.at ?? '') - beginning;
+    expect(run.events.at(-1)?.type).toBe('completed');
+    expect(textOf(run.events)).toContain('Я проверил произведение');
+    expect(elapsed).toBeLessThan(3000);
+    expect(elapsed).toBeLessThan(imageDuration);
+    expect(vi.getTimerCount()).toBe(0);
+  }
+});
+
+it('finishes every prepared text response within 4 seconds even at maximum timing values', async () => {
+  const equation = 'Помоги решить уравнение';
+  const agent = createMockAgent({
+    random: () => 0.999999,
+    createId: createIds('max'),
+  });
+  const cases: {
+    prompt: string;
+    history: AgentRequest['history'];
+    attempt?: number;
+  }[] = [
+    { prompt: 'Объясни второй закон Ньютона', history: [] },
+    {
+      prompt: 'Объясни проще',
+      history: history('Объясни второй закон Ньютона'),
+    },
+    {
+      prompt: 'Приведи пример из жизни',
+      history: history('Объясни второй закон Ньютона'),
+    },
+    {
+      prompt: 'Покажи схему',
+      history: history('Объясни второй закон Ньютона'),
+    },
+    { prompt: equation, history: [] },
+    ...[1, 2, 3].map((steps) => ({
+      prompt: 'Дальше',
+      history: history(equation, ...Array<string>(steps - 1).fill('Дальше')),
+    })),
+    {
+      prompt: 'Почему нужно раскрывать скобки?',
+      history: history(equation),
+    },
+    {
+      prompt: 'Почему −12 + 5 = −7?',
+      history: history(equation, 'Дальше'),
+    },
+    {
+      prompt: 'Почему при переносе меняется знак?',
+      history: history(equation, 'Дальше', 'Дальше'),
+    },
+    {
+      prompt: 'Дальше',
+      history: history(equation, 'Дальше', 'Дальше', 'Дальше'),
+    },
+    {
+      prompt: 'Покажи проверку подробнее',
+      history: history(equation, 'Дальше', 'Дальше', 'Дальше'),
+    },
+    {
+      prompt: 'Объясни, как проверить ответ',
+      history: history(equation, 'Дальше', 'Дальше', 'Дальше'),
+    },
+    { prompt: '17 * 24', history: [] },
+    { prompt: 'Что-нибудь неизвестное', history: [] },
+    {
+      prompt: 'Что-нибудь неизвестное',
+      history: history('Объясни второй закон Ньютона'),
+    },
+    { prompt: 'Что-нибудь неизвестное', history: history(equation) },
+    ...['Объясни проще', 'Покажи схему', 'Дальше'].map((prompt) => ({
+      prompt,
+      history: [],
+    })),
+    { prompt: 'Покажи ошибку', history: [] },
+    { prompt: 'Покажи обрыв ответа', history: [] },
+    { prompt: 'Покажи ошибку', history: [], attempt: 2 },
+    { prompt: 'Покажи обрыв ответа', history: [], attempt: 2 },
+  ];
+  for (const input of cases) {
+    const beginning = Date.now();
+    const run = start(input.prompt, {
+      agent,
+      history: input.history,
+      attempt: input.attempt ?? 1,
+    });
+    await complete(run);
+    expect(Date.now() - beginning).toBeLessThan(30_000);
+    if (!run.events.some((event) => event.type === 'image_received'))
+      expect(Date.now() - beginning, input.prompt).toBeLessThanOrEqual(4000);
+    expect(run.events.at(-1)?.type).toBe(
+      ['Покажи ошибку', 'Покажи обрыв ответа'].includes(input.prompt) &&
+        !input.attempt
+        ? 'error'
+        : 'completed',
+    );
+  }
+});
+
 it('finishes unsupported requests as a friendly successful fallback (S-07)', async () => {
   const run = start('Расскажи о звёздах');
   await complete(run);
@@ -348,7 +569,11 @@ it.each([
 );
 
 it('does not share context between concurrent requests on the same agent instance', async () => {
-  const agent = createMockAgent();
+  const agent = createMockAgent({
+    timing: FIXED_MOCK_TIMING,
+    streaming: FIXED_STREAMING,
+    random: () => 0.5,
+  });
   const first = start('Дальше', {
     agent,
     chatId: 'a',
@@ -383,7 +608,19 @@ it.each([
   { stage: 'calculator', elapsed: 600, prompt: '17 × 24', history: [] },
   {
     stage: 'streaming',
-    elapsed: 650,
+    elapsed: 1000,
+    prompt: 'Объясни второй закон Ньютона',
+    history: [],
+  },
+  {
+    stage: 'tool result delivery',
+    elapsed: 1100,
+    prompt: '17 × 24',
+    history: [],
+  },
+  {
+    stage: 'text preparation',
+    elapsed: 600,
     prompt: 'Объясни второй закон Ньютона',
     history: [],
   },

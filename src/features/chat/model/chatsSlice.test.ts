@@ -10,7 +10,11 @@ import {
   TEST_TIME,
 } from '@/test/fixtures';
 import { chatActions, chatsReducer } from './chatsSlice';
-import { createEmptyChat, createInitialChatsState } from './helpers';
+import {
+  buildAgentHistory,
+  createEmptyChat,
+  createInitialChatsState,
+} from './helpers';
 import { selectChatRowMetadata } from './selectors';
 import type { AssistantMessage, Run } from './types';
 
@@ -365,10 +369,72 @@ describe('event state machine', () => {
     ).toBe(state);
   });
 
+  it('completes an image-only response, records its actions and keeps it in successful history', () => {
+    let state = pendingState();
+    const events: AgentEventData[] = [
+      { type: 'started' },
+      { type: 'action_completed', actionId: 'analysis', action: 'analyzed' },
+      { type: 'phase_changed', phase: 'preparing_image' },
+      { type: 'image_received', imageSrc: 'assets/example.png' },
+      { type: 'action_completed', actionId: 'image', action: 'image_prepared' },
+      {
+        type: 'action_completed',
+        actionId: 'answer',
+        action: 'answer_composed',
+      },
+      { type: 'completed' },
+    ];
+    for (const event of events)
+      state = chatsReducer(
+        state,
+        chatActions.agentEventReceived(eventFor(pendingMeta, event)),
+      );
+    const message = lastAssistant(state.byId['chat-a']);
+    expect(message).toMatchObject({
+      text: '',
+      imageSrc: 'assets/example.png',
+      run: { status: 'completed', finishedAt: TEST_TIME },
+    });
+    expect(message.run.actions.map((action) => action.kind)).toEqual([
+      'analyzed',
+      'image_prepared',
+      'answer_composed',
+    ]);
+    expect(buildAgentHistory(state.byId['chat-a']?.messages ?? [])).toEqual([
+      { userText: state.byId['chat-a']?.messages[0]?.text, assistantText: '' },
+    ]);
+    expect(
+      chatsReducer(
+        state,
+        chatActions.agentEventReceived(
+          eventFor(pendingMeta, {
+            type: 'text_delta',
+            text: 'late explanation',
+          }),
+        ),
+      ),
+    ).toBe(state);
+  });
+
   it.each<AgentEventData[]>([
     [{ type: 'text_delta', text: 'before started' }],
     [{ type: 'started' }, { type: 'started' }],
     [{ type: 'started' }, { type: 'completed' }],
+    [
+      { type: 'started' },
+      { type: 'phase_changed', phase: 'composing' },
+      { type: 'completed' },
+    ],
+    [
+      { type: 'started' },
+      { type: 'phase_changed', phase: 'preparing_image' },
+      { type: 'completed' },
+    ],
+    [
+      { type: 'started' },
+      { type: 'text_delta', text: ' ' },
+      { type: 'completed' },
+    ],
     [
       { type: 'started' },
       {
