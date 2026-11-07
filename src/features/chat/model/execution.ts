@@ -4,7 +4,7 @@ import type { Run } from './types';
 export const AGENT_ACTION_LABELS: Readonly<Record<AgentActionKind, string>> = {
   analyzed: 'Проанализировал запрос',
   calculated: 'Выполнил вычисление с помощью калькулятора',
-  image_prepared: 'Создал изображение',
+  image_prepared: 'Использовал генератор изображений',
   answer_composed: 'Сформировал ответ',
 };
 

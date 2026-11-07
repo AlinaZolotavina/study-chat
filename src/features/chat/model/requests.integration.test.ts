@@ -9,6 +9,8 @@ import {
   TEST_TIME,
   FIXED_MOCK_TIMING,
   FIXED_STREAMING,
+  imageToolCall,
+  imageToolResult,
 } from '@/test/fixtures';
 import { chatActions } from './chatsSlice';
 import {
@@ -184,8 +186,8 @@ it('INT-04: retries with a fresh run, empty result and protection from the old r
   store.dispatch(sendMessage(chatId));
   const firstCall = control.call(0);
   firstCall.emit({ type: 'started' });
-  firstCall.emit({ type: 'phase_changed', phase: 'preparing_image' });
-  firstCall.emit({ type: 'image_received', imageSrc: 'assets/example.png' });
+  firstCall.emit(imageToolCall());
+  firstCall.emit(imageToolResult());
   firstCall.emit({ type: 'text_delta', text: 'partial' });
   await vi.waitFor(() =>
     expect(lastAssistant(store.getState().chats.byId[chatId]).text).toBe(

@@ -1,5 +1,10 @@
 import type { AgentEvent, AgentEventData, AgentRequest } from '@/agent/types';
-import { STREAMING_CONFIG, type MockTiming } from '@/agent/config';
+import {
+  STREAMING_CONFIG,
+  NEWTON_IMAGE_SRC,
+  type MockTiming,
+} from '@/agent/config';
+import { NEWTON_IMAGE_ALT } from '@/agent/tools/generateImage';
 import {
   createEmptyChat,
   createInitialChatsState,
@@ -12,6 +17,23 @@ import type {
 } from '@/features/chat/model/types';
 
 export const TEST_TIME = '2026-11-06T08:00:00.000Z';
+
+export const imageToolCall = (callId = 'image-call'): AgentEventData => ({
+  type: 'tool_call',
+  tool: 'generate_image',
+  callId,
+  input: { topic: 'newton', imageType: 'educational_diagram' },
+});
+export const imageToolResult = (
+  imageSrc = NEWTON_IMAGE_SRC,
+  callId = 'image-call',
+  alt = NEWTON_IMAGE_ALT,
+): AgentEventData => ({
+  type: 'tool_result',
+  tool: 'generate_image',
+  callId,
+  output: { status: 'success', imageSrc, alt },
+});
 
 export const FIXED_MOCK_TIMING: MockTiming = {
   queuedMs: 150,

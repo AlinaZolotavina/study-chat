@@ -1,4 +1,9 @@
-import type { AgentActionKind, AgentError, AgentPhase } from '@/agent/types';
+import type {
+  AgentActionKind,
+  AgentError,
+  AgentPhase,
+  ToolName,
+} from '@/agent/types';
 
 export type ChatId = string;
 export type MessageId = string;
@@ -22,7 +27,9 @@ export interface RunBase {
 
 export type ProcessingPhase =
   | { kind: AgentPhase }
-  | { kind: 'using_tool'; callId: ToolCallId; tool: 'calculator' };
+  // Previously persisted active runs are read, then restored as interrupted.
+  | { kind: 'preparing_image' }
+  | { kind: 'using_tool'; callId: ToolCallId; tool: ToolName };
 
 export type QueuedRun = RunBase & { status: 'queued' };
 export type ActiveRun =
@@ -55,6 +62,7 @@ export interface AssistantMessage extends MessageBase {
   replyToMessageId: MessageId;
   text: string;
   imageSrc: string | null;
+  imageAlt?: string;
   run: Run;
 }
 

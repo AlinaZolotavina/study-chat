@@ -22,8 +22,33 @@ const activeRuns: Run[] = [
     phase: { kind: 'using_tool', tool: 'calculator', callId: 'tool-1' },
   },
   { ...base, status: 'processing', phase: { kind: 'preparing_image' } },
+  {
+    ...base,
+    status: 'processing',
+    phase: { kind: 'using_tool', tool: 'generate_image', callId: 'image-call' },
+  },
   { ...base, status: 'streaming' },
 ];
+
+it('loads both image metadata and earlier images without optional alt', () => {
+  for (const imageAlt of [undefined, 'Второй закон Ньютона']) {
+    const chat = createEmptyChat('a', TEST_TIME);
+    const pair = makeTurn(
+      { ...base, status: 'completed', finishedAt: TEST_TIME },
+      '',
+    );
+    pair[1].imageSrc = 'assets/newtons-2nd-law-of-motion.png';
+    if (imageAlt !== undefined) pair[1].imageAlt = imageAlt;
+    chat.messages = pair;
+    const saved = createInitialChatsState(chat);
+    const loaded = loadChats(
+      () => ({ getItem: () => JSON.stringify(saved), setItem: vi.fn() }),
+      () => RESTORED_AT,
+    );
+    expect(loaded.ok).toBe(true);
+    if (loaded.ok) expect(loaded.chats).toEqual(saved);
+  }
+});
 
 it('preserves completed actions and expansion when restoring a streaming run as interrupted', () => {
   const chat = createEmptyChat('a', TEST_TIME);

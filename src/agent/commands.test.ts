@@ -37,6 +37,7 @@ it.each<{ kind: Command['kind']; prompts: string[] }>([
   },
   { kind: 'demo_error', prompts: ['Покажи ошибку'] },
   { kind: 'demo_partial_error', prompts: ['Покажи обрыв ответа'] },
+  { kind: 'demo_image_error', prompts: ['Покажи ошибку создания изображения'] },
 ])(
   'recognizes every approved $kind alias after normalization',
   ({ kind, prompts }) => {

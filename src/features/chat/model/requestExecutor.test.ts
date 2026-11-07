@@ -8,6 +8,8 @@ import {
   makeTurn,
   queuedRun,
   TEST_TIME,
+  imageToolCall,
+  imageToolResult,
 } from '@/test/fixtures';
 import { chatActions, chatsReducer } from './chatsSlice';
 import { createEmptyChat, createInitialChatsState } from './helpers';
@@ -282,8 +284,8 @@ it('keeps partial text, image and draft at timeout and ignores late output', asy
   context.executor.send('a');
   const call = control.call(0);
   call.emit({ type: 'started' });
-  call.emit({ type: 'phase_changed', phase: 'preparing_image' });
-  call.emit({ type: 'image_received', imageSrc: 'assets/example.png' });
+  call.emit(imageToolCall());
+  call.emit(imageToolResult());
   call.emit({ type: 'text_delta', text: 'partial' });
   context.dispatch(
     chatActions.draftChanged({ chatId: 'a', draft: 'keep draft' }),
@@ -294,7 +296,7 @@ it('keeps partial text, image and draft at timeout and ignores late output', asy
   await vi.advanceTimersByTimeAsync(1);
   expect(lastAssistant(context.state().byId.a)).toMatchObject({
     text: 'partial',
-    imageSrc: 'assets/example.png',
+    imageSrc: 'assets/newtons-2nd-law-of-motion.png',
     run: { status: 'failed', error: { code: 'timeout', retryable: true } },
   });
   expect(context.state().byId.a?.draft).toBe('keep draft');

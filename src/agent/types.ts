@@ -1,3 +1,8 @@
+import type {
+  GenerateImageInput,
+  GenerateImageResult,
+} from './tools/generateImage';
+
 export type AgentErrorCode =
   | 'demo_failure'
   | 'demo_partial_failure'
@@ -12,7 +17,8 @@ export interface AgentError {
   retryable: boolean;
 }
 
-export type AgentPhase = 'analyzing' | 'preparing_image' | 'composing';
+export type AgentPhase = 'analyzing' | 'composing';
+export type ToolName = 'calculator' | 'generate_image';
 
 export const AGENT_ACTION_KINDS = [
   'analyzed',
@@ -59,7 +65,18 @@ export type AgentEventData =
       tool: 'calculator';
       output: { value: number };
     }
-  | { type: 'image_received'; imageSrc: string }
+  | {
+      type: 'tool_call';
+      callId: string;
+      tool: 'generate_image';
+      input: GenerateImageInput;
+    }
+  | {
+      type: 'tool_result';
+      callId: string;
+      tool: 'generate_image';
+      output: GenerateImageResult;
+    }
   | { type: 'text_delta'; text: string }
   | { type: 'completed' }
   | { type: 'error'; error: AgentError };

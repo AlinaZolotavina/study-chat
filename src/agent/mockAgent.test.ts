@@ -6,11 +6,12 @@ import {
   FIXED_MOCK_TIMING,
   FIXED_STREAMING,
 } from '@/test/fixtures';
-import * as calculator from './calculator';
+import * as calculator from './tools/calculator';
 import * as scenarios from './scenarios';
 import { NEWTON_IMAGE_SRC } from './config';
 import { createMockAgent } from './mockAgent';
 import type { Agent, AgentEvent, AgentRequest } from './types';
+import { deriveContext } from './context';
 
 const runs: { controller: AbortController; finished: Promise<void> }[] = [];
 const history = (...prompts: string[]) =>
@@ -94,9 +95,12 @@ it('streams Newton with observable delays and correctly addressed events (S-01)'
     expect(length).toBeGreaterThanOrEqual(1);
   }
   expect(run.events.at(-1)?.type).toBe('completed');
-  expect(run.events.some((event) => event.type === 'image_received')).toBe(
-    false,
-  );
+  expect(
+    run.events.some(
+      (event) =>
+        event.type === 'tool_result' && event.tool === 'generate_image',
+    ),
+  ).toBe(false);
   for (const event of run.events)
     expect(event).toMatchObject({
       chatId: run.request.chatId,
@@ -178,9 +182,12 @@ it('simplifies the successful topic without emitting an image (S-02)', async () 
   await complete(run);
   expect(textOf(run.events)).toContain('тележку');
   expect(textOf(run.events)).toContain('ускорение');
-  expect(run.events.some((event) => event.type === 'image_received')).toBe(
-    false,
-  );
+  expect(
+    run.events.some(
+      (event) =>
+        event.type === 'tool_result' && event.tool === 'generate_image',
+    ),
+  ).toBe(false);
   expect(run.events.at(-1)?.type).toBe('completed');
 });
 
@@ -192,22 +199,33 @@ it('prepares the supplied Newton image directly after the first explanation (S-0
     FIXED_MOCK_TIMING.queuedMs + FIXED_MOCK_TIMING.analysisMs.minMs,
   );
   expect(run.events.at(-1)).toMatchObject({
-    type: 'phase_changed',
-    phase: 'preparing_image',
+    type: 'tool_call',
+    tool: 'generate_image',
+    input: { topic: 'newton', imageType: 'educational_diagram' },
   });
-  expect(run.events.some((event) => event.type === 'image_received')).toBe(
-    false,
-  );
+  expect(
+    run.events.some(
+      (event) =>
+        event.type === 'tool_result' && event.tool === 'generate_image',
+    ),
+  ).toBe(false);
   await vi.advanceTimersByTimeAsync(FIXED_MOCK_TIMING.imageMs.minMs - 1);
-  expect(run.events.some((event) => event.type === 'image_received')).toBe(
-    false,
-  );
+  expect(
+    run.events.some(
+      (event) =>
+        event.type === 'tool_result' && event.tool === 'generate_image',
+    ),
+  ).toBe(false);
   await vi.advanceTimersByTimeAsync(1);
   expect(
-    run.events.find((event) => event.type === 'image_received'),
+    run.events.find(
+      (event) =>
+        event.type === 'tool_result' && event.tool === 'generate_image',
+    ),
   ).toMatchObject({
-    type: 'image_received',
-    imageSrc: NEWTON_IMAGE_SRC,
+    type: 'tool_result',
+    tool: 'generate_image',
+    output: { status: 'success', imageSrc: NEWTON_IMAGE_SRC },
   });
   expect(
     run.events.find(
@@ -226,9 +244,16 @@ it('prepares the supplied Newton image directly after the first explanation (S-0
   expect(textOf(run.events)).toBe('');
   expect(run.events.some((event) => event.type === 'text_delta')).toBe(false);
   expect(
-    run.events.filter((event) => event.type === 'image_received'),
+    run.events.filter(
+      (event) =>
+        event.type === 'tool_result' && event.tool === 'generate_image',
+    ),
   ).toHaveLength(1);
-  expect(run.events.some((event) => event.type === 'tool_call')).toBe(false);
+  const call = run.events.find((event) => event.type === 'tool_call');
+  const result = run.events.find((event) => event.type === 'tool_result');
+  expect(result).toMatchObject({
+    callId: call?.type === 'tool_call' ? call.callId : '',
+  });
   expect(run.events.at(-1)?.type).toBe('completed');
 });
 
@@ -237,11 +262,69 @@ it.each([{ previous: [] }, { previous: history('Помоги решить ура
   async ({ previous }) => {
     const run = start('Покажи схему', { history: previous });
     await complete(run);
-    expect(run.events.some((event) => event.type === 'image_received')).toBe(
-      false,
-    );
+    expect(
+      run.events.some(
+        (event) =>
+          event.type === 'tool_result' && event.tool === 'generate_image',
+      ),
+    ).toBe(false);
     expect(textOf(run.events)).toContain('деморежиме');
     expect(run.events.at(-1)?.type).toBe('completed');
+  },
+);
+
+it.each([
+  { previous: [] },
+  { previous: history('Объясни второй закон Ньютона', 'Проще') },
+  { previous: history('Помоги решить уравнение', 'Дальше') },
+  { previous: history('17 * 24') },
+])(
+  'demonstrates image tool failure and a fresh successful Retry without changing context (%#)',
+  async ({ previous }) => {
+    const agent = createMockAgent({
+      timing: FIXED_MOCK_TIMING,
+      streaming: FIXED_STREAMING,
+      random: () => 0.5,
+      createId: createIds('image'),
+    });
+    const prompt = 'Покажи ошибку создания изображения';
+    const failed = start(prompt, { agent, history: previous });
+    await complete(failed);
+    expect(
+      failed.events.find((event) => event.type === 'tool_call'),
+    ).toMatchObject({
+      tool: 'generate_image',
+      input: { topic: 'newton', imageType: 'educational_diagram' },
+    });
+    expect(failed.events.at(-1)).toMatchObject({
+      type: 'error',
+      error: { code: 'tool_failure', retryable: true },
+    });
+    expect(failed.events.some((event) => event.type === 'tool_result')).toBe(
+      false,
+    );
+    expect(
+      failed.events
+        .filter((event) => event.type === 'action_completed')
+        .map((event) => event.action),
+    ).toEqual(['analyzed']);
+    const retry = start(prompt, { agent, history: previous, attempt: 2 });
+    await complete(retry);
+    const call = retry.events.find((event) => event.type === 'tool_call');
+    expect(call).not.toEqual(
+      failed.events.find((event) => event.type === 'tool_call'),
+    );
+    expect(
+      retry.events.find((event) => event.type === 'tool_result'),
+    ).toMatchObject({
+      tool: 'generate_image',
+      output: { status: 'success', imageSrc: NEWTON_IMAGE_SRC },
+    });
+    expect(retry.events.at(-1)?.type).toBe('completed');
+    expect(textOf(retry.events)).toBe('');
+    expect(
+      deriveContext([...previous, { userText: prompt, assistantText: '' }]),
+    ).toEqual(deriveContext(previous));
   },
 );
 
@@ -390,7 +473,10 @@ it.each([
     const pictureStart = Date.now();
     await complete(picture);
     const ready = Date.parse(
-      picture.events.find((event) => event.type === 'image_received')?.at ?? '',
+      picture.events.find(
+        (event) =>
+          event.type === 'tool_result' && event.tool === 'generate_image',
+      )?.at ?? '',
     );
     expect(ready - pictureStart).toBe(image);
     expect(picture.events.some((event) => event.type === 'text_delta')).toBe(
@@ -508,6 +594,8 @@ it('finishes every prepared text response within 4 seconds even at maximum timin
     { prompt: 'Покажи обрыв ответа', history: [] },
     { prompt: 'Покажи ошибку', history: [], attempt: 2 },
     { prompt: 'Покажи обрыв ответа', history: [], attempt: 2 },
+    { prompt: 'Покажи ошибку создания изображения', history: [] },
+    { prompt: 'Покажи ошибку создания изображения', history: [], attempt: 2 },
   ];
   for (const input of cases) {
     const beginning = Date.now();
@@ -518,11 +606,19 @@ it('finishes every prepared text response within 4 seconds even at maximum timin
     });
     await complete(run);
     expect(Date.now() - beginning).toBeLessThan(30_000);
-    if (!run.events.some((event) => event.type === 'image_received'))
+    if (
+      !run.events.some(
+        (event) =>
+          event.type === 'tool_call' && event.tool === 'generate_image',
+      )
+    )
       expect(Date.now() - beginning, input.prompt).toBeLessThanOrEqual(4000);
     expect(run.events.at(-1)?.type).toBe(
-      ['Покажи ошибку', 'Покажи обрыв ответа'].includes(input.prompt) &&
-        !input.attempt
+      [
+        'Покажи ошибку',
+        'Покажи обрыв ответа',
+        'Покажи ошибку создания изображения',
+      ].includes(input.prompt) && !input.attempt
         ? 'error'
         : 'completed',
     );

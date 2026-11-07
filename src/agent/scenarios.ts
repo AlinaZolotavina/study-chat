@@ -5,7 +5,8 @@ import { EQUATION_CHECK_DETAIL, EQUATION_STEPS } from './equation';
 import type { AgentError } from './types';
 
 type Scenario =
-  | { kind: 'text' | 'image'; text: string }
+  | { kind: 'text'; text: string }
+  | { kind: 'image'; text: ''; fail: boolean }
   | { kind: 'calculator'; left: number; right: number }
   | { kind: 'error'; text: string; error: AgentError };
 
@@ -41,6 +42,8 @@ export function chooseScenario(
   attempt: number,
 ): Scenario {
   switch (command.kind) {
+    case 'demo_image_error':
+      return { kind: 'image', text: '', fail: attempt === 1 };
     case 'demo_error':
     case 'demo_partial_error':
       if (attempt === 1)
@@ -79,6 +82,7 @@ export function chooseScenario(
         return {
           kind: 'image',
           text: '',
+          fail: false,
         };
       return fallback(context);
     case 'life_example':

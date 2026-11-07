@@ -153,6 +153,20 @@ it('ignores contextual commands without their topic', () => {
   ).toEqual({ topic: 'none' });
 });
 
+it('keeps image-error commands neutral in every learning context', () => {
+  for (const prompts of [
+    [],
+    ['Объясни второй закон Ньютона', 'Проще'],
+    [equation, 'Дальше'],
+    ['17 * 24'],
+  ]) {
+    const before = deriveContext(history(...prompts));
+    expect(
+      deriveContext(history(...prompts, 'Покажи ошибку создания изображения')),
+    ).toEqual(before);
+  }
+});
+
 it('tracks question usage only for the matching current stage, then clears it on advancement', () => {
   const first = [equation, 'Почему нужно раскрывать скобки?'];
   expect(deriveContext(history(...first))).toMatchObject({

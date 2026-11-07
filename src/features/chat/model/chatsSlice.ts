@@ -1,11 +1,14 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { AgentEvent } from '@/agent/types';
 import {
+  isGenerateImageInput,
+  isGenerateImageResult,
+} from '@/agent/tools/generateImage';
+import {
   canRetryMessage,
   getChatById,
   getLastAssistant,
   isActiveRun,
-  isLocalImageSrc,
   makeChatTitle,
   runBase,
 } from './helpers';
@@ -72,9 +75,12 @@ function applyAgentEvent(message: AssistantMessage, event: AgentEvent) {
         run.status !== 'processing' ||
         !['analyzing', 'composing'].includes(run.phase.kind) ||
         !event.callId ||
-        ![event.input.left, event.input.right].every(
-          (value) => Number.isInteger(value) && Math.abs(value) <= 10_000,
-        )
+        !(event.tool === 'calculator'
+          ? [event.input.left, event.input.right].every(
+              (value) => Number.isInteger(value) && Math.abs(value) <= 10_000,
+            )
+          : event.tool === 'generate_image' &&
+            isGenerateImageInput(event.input))
       )
         break;
       message.run = {
@@ -89,23 +95,16 @@ function applyAgentEvent(message: AssistantMessage, event: AgentEvent) {
         run.phase.kind !== 'using_tool' ||
         run.phase.callId !== event.callId ||
         run.phase.tool !== event.tool ||
-        !Number.isFinite(event.output.value)
+        !(event.tool === 'calculator'
+          ? Number.isFinite(event.output.value)
+          : event.tool === 'generate_image' &&
+            isGenerateImageResult(event.output))
       )
         break;
-      message.run = {
-        ...runBase(run),
-        status: 'processing',
-        phase: { kind: 'composing' },
-      };
-      return;
-    case 'image_received':
-      if (
-        run.status !== 'processing' ||
-        run.phase.kind !== 'preparing_image' ||
-        !isLocalImageSrc(event.imageSrc)
-      )
-        break;
-      message.imageSrc = event.imageSrc;
+      if (event.tool === 'generate_image') {
+        message.imageSrc = event.output.imageSrc;
+        message.imageAlt = event.output.alt;
+      }
       message.run = {
         ...runBase(run),
         status: 'processing',
@@ -200,7 +199,8 @@ const chatsSlice = createSlice({
         assistant.run.actions.length !== 0 ||
         assistant.run.expanded ||
         assistant.text !== '' ||
-        assistant.imageSrc !== null
+        assistant.imageSrc !== null ||
+        assistant.imageAlt !== undefined
       )
         return;
       if (chat.messages.length === 0) chat.title = makeChatTitle(user.text);
@@ -231,6 +231,7 @@ const chatsSlice = createSlice({
         return;
       message.text = '';
       message.imageSrc = null;
+      delete message.imageAlt;
       message.run = payload.run;
     },
     runCancelled(

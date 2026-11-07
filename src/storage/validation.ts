@@ -48,7 +48,7 @@ function isRun(value: unknown): value is Run {
         phase.kind === 'composing' ||
         phase.kind === 'preparing_image' ||
         (phase.kind === 'using_tool' &&
-          phase.tool === 'calculator' &&
+          (phase.tool === 'calculator' || phase.tool === 'generate_image') &&
           isId(phase.callId)))
     );
   }
@@ -84,6 +84,10 @@ function isMessage(value: unknown): value is Message {
   return (
     value.role === 'assistant' &&
     isId(value.replyToMessageId) &&
+    (value.imageAlt === undefined ||
+      (value.imageSrc !== null &&
+        typeof value.imageAlt === 'string' &&
+        value.imageAlt.trim().length > 0)) &&
     (value.imageSrc === null ||
       (typeof value.imageSrc === 'string' &&
         isLocalImageSrc(value.imageSrc))) &&

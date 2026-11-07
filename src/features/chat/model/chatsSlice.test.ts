@@ -8,6 +8,8 @@ import {
   pendingState,
   queuedRun,
   TEST_TIME,
+  imageToolCall,
+  imageToolResult,
 } from '@/test/fixtures';
 import { chatActions, chatsReducer } from './chatsSlice';
 import {
@@ -96,7 +98,11 @@ it.each<{ reason: string; changes: Partial<AssistantMessage> }>([
   },
   {
     reason: 'response already contains an image',
-    changes: { imageSrc: 'assets/example.png' },
+    changes: { imageSrc: 'assets/newtons-2nd-law-of-motion.png' },
+  },
+  {
+    reason: 'response already has image metadata',
+    changes: { imageAlt: 'unexpected alt' },
   },
   {
     reason: 'response already has completed actions',
@@ -253,28 +259,60 @@ describe('event state machine', () => {
       phase: { kind: 'using_tool', tool: 'calculator', callId: 'pending-call' },
     },
     { ...queuedRun(), status: 'streaming' },
-  ])('rejects image_received outside preparing_image (%#)', (run) => {
-    const state = pendingState();
-    const assistant = lastAssistant(state.byId['chat-a']);
-    assistant.run = run;
-    assistant.text = run.status === 'streaming' ? 'partial' : '';
-    const next = chatsReducer(
-      state,
+  ])(
+    'rejects an image result without the matching image tool call (%#)',
+    (run) => {
+      const state = pendingState();
+      const assistant = lastAssistant(state.byId['chat-a']);
+      assistant.run = run;
+      assistant.text = run.status === 'streaming' ? 'partial' : '';
+      const next = chatsReducer(
+        state,
+        chatActions.agentEventReceived(
+          eventFor(pendingMeta, imageToolResult()),
+        ),
+      );
+      expect(lastAssistant(next.byId['chat-a'])).toMatchObject({
+        text: assistant.text,
+        imageSrc: null,
+        run: {
+          status: 'failed',
+          error: { code: 'protocol_error', retryable: true },
+        },
+      });
+    },
+  );
+
+  it.each([
+    imageToolResult(undefined, 'another-call'),
+    imageToolResult('https://example.com/image.png'),
+    imageToolResult(undefined, undefined, ' '),
+    {
+      type: 'tool_result',
+      tool: 'calculator',
+      callId: 'image-call',
+      output: { value: 408 },
+    } satisfies AgentEventData,
+  ])('rejects mismatching or invalid generate_image output (%#)', (event) => {
+    let state = chatsReducer(
+      pendingState(),
       chatActions.agentEventReceived(
-        eventFor(pendingMeta, {
-          type: 'image_received',
-          imageSrc: 'assets/example.png',
-        }),
+        eventFor(pendingMeta, { type: 'started' }),
       ),
     );
-    expect(lastAssistant(next.byId['chat-a'])).toMatchObject({
-      text: assistant.text,
+    state = chatsReducer(
+      state,
+      chatActions.agentEventReceived(eventFor(pendingMeta, imageToolCall())),
+    );
+    state = chatsReducer(
+      state,
+      chatActions.agentEventReceived(eventFor(pendingMeta, event)),
+    );
+    expect(lastAssistant(state.byId['chat-a'])).toMatchObject({
       imageSrc: null,
-      run: {
-        status: 'failed',
-        error: { code: 'protocol_error', retryable: true },
-      },
+      run: { status: 'failed', error: { code: 'protocol_error' } },
     });
+    expect(lastAssistant(state.byId['chat-a'])).not.toHaveProperty('imageAlt');
   });
 
   it('matches tool calls, accumulates text and locks the completed response', () => {
@@ -318,8 +356,8 @@ describe('event state machine', () => {
     let state = pendingState();
     const events: AgentEventData[] = [
       { type: 'started' },
-      { type: 'phase_changed', phase: 'preparing_image' },
-      { type: 'image_received', imageSrc: 'assets/example.png' },
+      imageToolCall(),
+      imageToolResult(),
       { type: 'text_delta', text: 'partial' },
       {
         type: 'error',
@@ -333,7 +371,7 @@ describe('event state machine', () => {
       );
     expect(lastAssistant(state.byId['chat-a'])).toMatchObject({
       text: 'partial',
-      imageSrc: 'assets/example.png',
+      imageSrc: 'assets/newtons-2nd-law-of-motion.png',
       run: {
         status: 'failed',
         error: { code: 'demo_partial_failure', retryable: true },
@@ -359,6 +397,7 @@ describe('event state machine', () => {
     });
     expect(state.byId['chat-a']?.messages).toHaveLength(2);
     expect(state.byId['chat-a']?.draft).toBe('next question');
+    expect(message).not.toHaveProperty('imageAlt');
     expect(
       chatsReducer(
         state,
@@ -374,8 +413,8 @@ describe('event state machine', () => {
     const events: AgentEventData[] = [
       { type: 'started' },
       { type: 'action_completed', actionId: 'analysis', action: 'analyzed' },
-      { type: 'phase_changed', phase: 'preparing_image' },
-      { type: 'image_received', imageSrc: 'assets/example.png' },
+      imageToolCall(),
+      imageToolResult(),
       { type: 'action_completed', actionId: 'image', action: 'image_prepared' },
       {
         type: 'action_completed',
@@ -392,7 +431,7 @@ describe('event state machine', () => {
     const message = lastAssistant(state.byId['chat-a']);
     expect(message).toMatchObject({
       text: '',
-      imageSrc: 'assets/example.png',
+      imageSrc: 'assets/newtons-2nd-law-of-motion.png',
       run: { status: 'completed', finishedAt: TEST_TIME },
     });
     expect(message.run.actions.map((action) => action.kind)).toEqual([
@@ -425,11 +464,7 @@ describe('event state machine', () => {
       { type: 'phase_changed', phase: 'composing' },
       { type: 'completed' },
     ],
-    [
-      { type: 'started' },
-      { type: 'phase_changed', phase: 'preparing_image' },
-      { type: 'completed' },
-    ],
+    [{ type: 'started' }, imageToolCall(), { type: 'completed' }],
     [
       { type: 'started' },
       { type: 'text_delta', text: ' ' },
@@ -444,11 +479,7 @@ describe('event state machine', () => {
         output: { value: 1 },
       },
     ],
-    [
-      { type: 'started' },
-      { type: 'phase_changed', phase: 'preparing_image' },
-      { type: 'image_received', imageSrc: '/assets/root.png' },
-    ],
+    [{ type: 'started' }, imageToolCall(), imageToolResult('/assets/root.png')],
   ])('fails an invalid current-run transition (%#)', (...events) => {
     let state = pendingState();
     for (const event of events)

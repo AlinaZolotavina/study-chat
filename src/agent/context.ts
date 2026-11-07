@@ -87,6 +87,7 @@ export function applyCompletedCommand(
     }
     case 'demo_error':
     case 'demo_partial_error':
+    case 'demo_image_error':
     case 'unsupported':
       return context;
     default: {

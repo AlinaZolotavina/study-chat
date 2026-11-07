@@ -947,6 +947,67 @@
   color: var(--color-text-muted);
   font-size: 14px;
 }
+.imageBlurStage {
+  animation: imageBlurStage 200ms ease-out both;
+}
+.imageParticles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.imageParticlesMoving {
+  animation: imageParticleStage 1400ms linear both;
+}
+.imageParticlesFading {
+  animation: imageParticlesFade 300ms ease-out both;
+}
+.imageParticle {
+  position: absolute;
+  border-radius: 1px;
+  background: var(--color-accent);
+  box-shadow: 0 0 5px 1px rgb(20 184 166 / 35%);
+  animation: imagePixelDrift 1400ms ease-in-out both;
+}
+.imageParticlesFading .imageParticle {
+  animation-play-state: paused;
+}
+@keyframes imageBlurStage {
+  from {
+    opacity: 0;
+    filter: blur(12px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+@keyframes imageParticleStage {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes imagePixelDrift {
+  from {
+    transform: translate(0, 0);
+    opacity: 0.35;
+  }
+  to {
+    transform: translate(var(--pixel-x), var(--pixel-y));
+    opacity: 0.7;
+  }
+}
+@keyframes imageParticlesFade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
 .imageFigure img {
   display: block;
   width: 100%;
@@ -1107,6 +1168,12 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .imageBlurStage,
+  .imageParticlesMoving,
+  .imageParticlesFading,
+  .imageParticle {
+    animation: none;
+  }
   .imageReveal {
     animation: none;
   }

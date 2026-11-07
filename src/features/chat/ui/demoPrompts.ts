@@ -16,4 +16,8 @@ export const LEARNING_PROMPTS = [
   },
 ] as const;
 
-export const ERROR_PROMPTS = ['Покажи ошибку', 'Покажи обрыв ответа'] as const;
+export const ERROR_PROMPTS = [
+  'Покажи ошибку',
+  'Покажи обрыв ответа',
+  'Покажи ошибку создания изображения',
+] as const;

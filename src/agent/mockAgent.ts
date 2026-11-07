@@ -1,8 +1,7 @@
 import { delay } from '@/shared/delay';
-import { calculateProduct } from './calculator';
+import { calculateProduct } from './tools/calculator';
 import { classifyCommand } from './commands';
 import {
-  NEWTON_IMAGE_SRC,
   MOCK_TIMING,
   STREAMING_CONFIG,
   sampleDuration,
@@ -10,6 +9,7 @@ import {
   type StreamingConfig,
 } from './config';
 import { streamText } from './streaming';
+import { generateImage, type GenerateImageResult } from './tools/generateImage';
 import { deriveContext } from './context';
 import { chooseScenario } from './scenarios';
 import type {
@@ -90,9 +90,37 @@ export function createMockAgent(options: MockAgentOptions = {}): Agent {
     } else {
       text = scenario.text;
       if (scenario.kind === 'image') {
-        yield event({ type: 'phase_changed', phase: 'preparing_image' });
-        await delay(sampleDuration(timing.imageMs, random), signal);
-        yield event({ type: 'image_received', imageSrc: NEWTON_IMAGE_SRC });
+        const callId = createId();
+        const input = {
+          topic: 'newton',
+          imageType: 'educational_diagram',
+        } as const;
+        yield event({
+          type: 'tool_call',
+          tool: 'generate_image',
+          callId,
+          input,
+        });
+        let output: GenerateImageResult;
+        try {
+          output = await generateImage(input, signal, {
+            delayMs: sampleDuration(timing.imageMs, random),
+            fail: scenario.fail,
+          });
+        } catch (error) {
+          if (signal.aborted) throw error;
+          yield event({
+            type: 'error',
+            error: { code: 'tool_failure', retryable: true },
+          });
+          return;
+        }
+        yield event({
+          type: 'tool_result',
+          tool: 'generate_image',
+          callId,
+          output,
+        });
         yield actionCompleted('image_prepared');
       } else if (text)
         yield event({ type: 'phase_changed', phase: 'composing' });

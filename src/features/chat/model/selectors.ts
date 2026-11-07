@@ -103,7 +103,10 @@ export function getAgentStatusLabel(run: Run): string | null {
         case 'preparing_image':
           return 'Создаю изображение…';
         case 'using_tool':
-          return 'Использую калькулятор…';
+          return run.phase.kind === 'using_tool' &&
+            run.phase.tool === 'generate_image'
+            ? 'Создаю изображение…'
+            : 'Использую калькулятор…';
         default: {
           const unreachable: never = phase;
           return unreachable;
