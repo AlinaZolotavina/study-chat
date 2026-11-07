@@ -2,13 +2,12 @@ import type { Command } from './commands';
 import type { LearningContext } from './context';
 import { applyCompletedCommand } from './context';
 import { EQUATION_CHECK_DETAIL, EQUATION_STEPS } from './equation';
-import type { AgentError } from './types';
+import type { DemoFailureKind } from './types';
 
 type Scenario =
-  | { kind: 'text'; text: string }
+  | { kind: 'text'; text: string; interrupt?: boolean }
   | { kind: 'image'; text: ''; fail: boolean }
-  | { kind: 'calculator'; left: number; right: number }
-  | { kind: 'error'; text: string; error: AgentError };
+  | { kind: 'calculator'; left: number; right: number; fail: boolean };
 
 function fallback(context: LearningContext): Scenario {
   const introduction =
@@ -39,32 +38,9 @@ function fallback(context: LearningContext): Scenario {
 export function chooseScenario(
   command: Command,
   context: LearningContext,
-  attempt: number,
+  demonstratedFailures: readonly DemoFailureKind[],
 ): Scenario {
   switch (command.kind) {
-    case 'demo_image_error':
-      return { kind: 'image', text: '', fail: attempt === 1 };
-    case 'demo_error':
-    case 'demo_partial_error':
-      if (attempt === 1)
-        return {
-          kind: 'error',
-          text:
-            command.kind === 'demo_error'
-              ? ''
-              : 'Начнём с первого шага: выделим известные данные и определим, что нужно найти. ',
-          error: {
-            code:
-              command.kind === 'demo_error'
-                ? 'demo_failure'
-                : 'demo_partial_failure',
-            retryable: true,
-          },
-        };
-      return {
-        kind: 'text',
-        text: 'Теперь ответ сформирован успешно. Можем продолжить разбирать задачу.',
-      };
     case 'newton':
       return {
         kind: 'text',
@@ -82,7 +58,7 @@ export function chooseScenario(
         return {
           kind: 'image',
           text: '',
-          fail: false,
+          fail: !demonstratedFailures.includes('image'),
         };
       return fallback(context);
     case 'life_example':
@@ -109,6 +85,8 @@ export function chooseScenario(
         };
       return {
         kind: 'text',
+        interrupt:
+          context.step === 2 && !demonstratedFailures.includes('equation'),
         text:
           context.step === 4
             ? 'Уравнение уже решено: x = 21/4 = 5,25. Можно уточнить проверку ответа или выбрать другую учебную тему.'
@@ -141,7 +119,12 @@ export function chooseScenario(
           }
         : fallback(context);
     case 'calculator':
-      return { kind: 'calculator', left: command.left, right: command.right };
+      return {
+        kind: 'calculator',
+        left: command.left,
+        right: command.right,
+        fail: !demonstratedFailures.includes('calculator'),
+      };
     case 'unsupported':
       return fallback(context);
     default: {

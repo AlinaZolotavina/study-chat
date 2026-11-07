@@ -12,6 +12,7 @@ import {
   makeTurn,
   queuedRun,
   TEST_TIME,
+  imageToolCall,
 } from '@/test/fixtures';
 import { STORAGE_KEY } from './chatStorage';
 import { attachChatPersistence, SAVE_DEBOUNCE_MS } from './persistence';
@@ -72,6 +73,34 @@ it('saves the latest draft once after the last change, not a captured old state'
     STORAGE_KEY,
     JSON.stringify(context.state()),
   );
+});
+
+it('saves a consumed failure immediately with the error, before the debounce', () => {
+  const context = setup(pendingState());
+  context.apply(
+    chatActions.agentEventReceived(eventFor(pendingMeta, { type: 'started' })),
+  );
+  context.apply(
+    chatActions.agentEventReceived(eventFor(pendingMeta, imageToolCall())),
+  );
+  expect(context.storage.setItem).not.toHaveBeenCalled();
+  context.apply(
+    chatActions.agentEventReceived(
+      eventFor(pendingMeta, {
+        type: 'error',
+        error: { code: 'tool_failure', retryable: true },
+        demoFailure: 'image',
+      }),
+    ),
+  );
+  expect(context.storage.setItem).toHaveBeenCalledExactlyOnceWith(
+    STORAGE_KEY,
+    JSON.stringify(context.state()),
+  );
+  expect(context.state().byId['chat-a']?.demonstratedFailures).toEqual([
+    'image',
+  ]);
+  expect(vi.getTimerCount()).toBe(0);
 });
 
 it('debounces streaming fragments and saves the accumulated partial result on a pause', async () => {

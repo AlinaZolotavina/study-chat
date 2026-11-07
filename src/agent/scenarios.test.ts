@@ -11,7 +11,7 @@ function answer(prompt: string, ...previous: string[]) {
     deriveContext(
       previous.map((userText) => ({ userText, assistantText: 'unused' })),
     ),
-    1,
+    [],
   );
 }
 function text(prompt: string, ...previous: string[]) {

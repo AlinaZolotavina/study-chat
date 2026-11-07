@@ -4,8 +4,10 @@ import type {
 } from './tools/generateImage';
 
 export type AgentErrorCode =
+  // Readable in previously saved failures; no standalone demo commands emit these.
   | 'demo_failure'
   | 'demo_partial_failure'
+  | 'stream_failure'
   | 'tool_failure'
   | 'timeout'
   | 'unexpected_end'
@@ -19,6 +21,9 @@ export interface AgentError {
 
 export type AgentPhase = 'analyzing' | 'composing';
 export type ToolName = 'calculator' | 'generate_image';
+
+export const DEMO_FAILURE_KINDS = ['calculator', 'equation', 'image'] as const;
+export type DemoFailureKind = (typeof DEMO_FAILURE_KINDS)[number];
 
 export const AGENT_ACTION_KINDS = [
   'analyzed',
@@ -40,6 +45,7 @@ export interface AgentRequest {
   readonly attempt: number;
   readonly prompt: string;
   readonly history: readonly AgentHistoryTurn[];
+  readonly demonstratedFailures: readonly DemoFailureKind[];
 }
 
 export interface AgentEventMeta {
@@ -79,7 +85,7 @@ export type AgentEventData =
     }
   | { type: 'text_delta'; text: string }
   | { type: 'completed' }
-  | { type: 'error'; error: AgentError };
+  | { type: 'error'; error: AgentError; demoFailure?: DemoFailureKind };
 
 export type AgentEvent = AgentEventMeta & AgentEventData;
 

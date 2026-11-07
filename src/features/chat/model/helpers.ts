@@ -20,6 +20,7 @@ export function createEmptyChat(id: string, createdAt: string): Chat {
     lastQuestionAt: null,
     draft: '',
     messages: [],
+    demonstratedFailures: [],
   };
 }
 

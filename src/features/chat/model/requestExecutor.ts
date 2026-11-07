@@ -209,6 +209,7 @@ export function createRequestExecutor(options: ExecutorOptions) {
       attempt: run.attempt,
       prompt: user.text,
       history: buildAgentHistory(chat.messages),
+      demonstratedFailures: [...(chat.demonstratedFailures ?? [])],
     };
     dispatch(
       chatActions.requestAccepted({
@@ -250,6 +251,7 @@ export function createRequestExecutor(options: ExecutorOptions) {
       attempt: run.attempt,
       prompt: user.text,
       history: buildAgentHistory(chat.messages, user.id),
+      demonstratedFailures: [...(chat.demonstratedFailures ?? [])],
     };
     dispatch(chatActions.retryAccepted({ chatId, assistantMessageId, run }));
     return start(request);

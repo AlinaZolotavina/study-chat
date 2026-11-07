@@ -1,5 +1,5 @@
 import { isLocalImageSrc } from '@/features/chat/model/helpers';
-import { AGENT_ACTION_KINDS } from '@/agent/types';
+import { AGENT_ACTION_KINDS, DEMO_FAILURE_KINDS } from '@/agent/types';
 import type {
   Chat,
   ChatsState,
@@ -63,6 +63,7 @@ function isRun(value: unknown): value is Run {
     [
       'demo_failure',
       'demo_partial_failure',
+      'stream_failure',
       'tool_failure',
       'timeout',
       'unexpected_end',
@@ -104,6 +105,13 @@ function isChat(value: unknown): value is Chat {
     (value.lastQuestionAt === null || isTimestamp(value.lastQuestionAt)) &&
     typeof value.draft === 'string' &&
     (value.unreadRunId === undefined || isId(value.unreadRunId)) &&
+    (value.demonstratedFailures === undefined ||
+      (Array.isArray(value.demonstratedFailures) &&
+        value.demonstratedFailures.every((kind) =>
+          DEMO_FAILURE_KINDS.some((allowed) => allowed === kind),
+        ) &&
+        new Set(value.demonstratedFailures).size ===
+          value.demonstratedFailures.length)) &&
     Array.isArray(value.messages) &&
     value.messages.every(isMessage)
   );

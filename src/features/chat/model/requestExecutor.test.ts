@@ -41,6 +41,57 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
+it('snapshots consumed failures per run and passes the accepted failure to Retry without duplicating the question', async () => {
+  const control = createControlledAgent();
+  const context = setup(control.agent, 10000);
+  context.executor.send('a');
+  const first = control.call(0);
+  expect(first.request.demonstratedFailures).toEqual([]);
+  first.emit({ type: 'started' });
+  first.emit(imageToolCall());
+  first.emit({
+    type: 'error',
+    error: { code: 'tool_failure', retryable: true },
+    demoFailure: 'image',
+  });
+  await vi.waitFor(() =>
+    expect(lastAssistant(context.state().byId.a).run.status).toBe('failed'),
+  );
+  expect(context.state().byId.a?.demonstratedFailures).toEqual(['image']);
+  expect(first.request.demonstratedFailures).toEqual([]);
+  const message = lastAssistant(context.state().byId.a);
+  expect(context.executor.retry('a', message.id)).toBe(true);
+  const retry = control.call(1);
+  expect(retry.request.demonstratedFailures).toEqual(['image']);
+  expect(retry.request.history).toEqual([]);
+  expect(retry.request.runId).not.toBe(first.request.runId);
+  retry.emit({ type: 'started' });
+  retry.emit(imageToolCall('retry-call'));
+  retry.emit(imageToolResult(undefined, 'retry-call'));
+  retry.emit({ type: 'completed' });
+  await vi.waitFor(() =>
+    expect(lastAssistant(context.state().byId.a).run.status).toBe('completed'),
+  );
+  expect(context.state().byId.a?.messages).toHaveLength(2);
+  expect(context.state().byId.a?.demonstratedFailures).toEqual(['image']);
+});
+
+it('passes an unconsumed failure to Retry after Stop before the error', async () => {
+  const control = createControlledAgent();
+  const context = setup(control.agent, 10000);
+  context.executor.send('a');
+  const first = control.call(0);
+  first.emit({ type: 'started' });
+  first.emit(imageToolCall());
+  await vi.waitFor(() =>
+    expect(lastAssistant(context.state().byId.a).run.status).toBe('processing'),
+  );
+  expect(context.executor.stop('a')).toBe(true);
+  const message = lastAssistant(context.state().byId.a);
+  context.executor.retry('a', message.id);
+  expect(control.call(1).request.demonstratedFailures).toEqual([]);
+});
+
 it('sends a suggested reply once through the same executor while preserving the draft', async () => {
   const chat = createEmptyChat('a', TEST_TIME);
   const past = makeTurn(

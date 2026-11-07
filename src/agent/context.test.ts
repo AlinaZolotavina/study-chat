@@ -153,7 +153,7 @@ it('ignores contextual commands without their topic', () => {
   ).toEqual({ topic: 'none' });
 });
 
-it('keeps image-error commands neutral in every learning context', () => {
+it('treats the removed image-error command as neutral fallback in every learning context', () => {
   for (const prompts of [
     [],
     ['Объясни второй закон Ньютона', 'Проще'],

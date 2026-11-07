@@ -1,5 +1,4 @@
 export type Command =
-  | { kind: 'demo_error' | 'demo_partial_error' | 'demo_image_error' }
   | {
       kind:
         | 'simplify'
@@ -16,9 +15,6 @@ export type Command =
   | { kind: 'equation' | 'newton' | 'unsupported' };
 
 const aliases: Readonly<Record<string, Command['kind']>> = {
-  'покажи ошибку': 'demo_error',
-  'покажи обрыв ответа': 'demo_partial_error',
-  'покажи ошибку создания изображения': 'demo_image_error',
   'объясни проще': 'simplify',
   проще: 'simplify',
   'объясни попроще': 'simplify',
@@ -54,12 +50,6 @@ export function classifyCommand(prompt: string): Command {
   const kind = Object.hasOwn(aliases, matchingText)
     ? aliases[matchingText]
     : undefined;
-  if (
-    kind === 'demo_error' ||
-    kind === 'demo_partial_error' ||
-    kind === 'demo_image_error'
-  )
-    return { kind };
   if (
     kind === 'simplify' ||
     kind === 'diagram' ||

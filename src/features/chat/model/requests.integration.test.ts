@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { createAppStore, type AppStore } from '@/app/store';
 import { createMockAgent } from '@/agent/mockAgent';
+import { EQUATION_STEPS } from '@/agent/equation';
 import { createControlledAgent } from '@/test/controlledAgent';
 import {
   createIds,
@@ -9,10 +10,9 @@ import {
   TEST_TIME,
   FIXED_MOCK_TIMING,
   FIXED_STREAMING,
-  imageToolCall,
-  imageToolResult,
 } from '@/test/fixtures';
 import { chatActions } from './chatsSlice';
+import { selectChatSuggestions } from './selectors';
 import {
   createChat,
   deleteChat,
@@ -182,54 +182,70 @@ it('INT-03: switches chats and deletes another active chat without stopping the 
 });
 
 it('INT-04: retries with a fresh run, empty result and protection from the old run', async () => {
-  const { store, control, chatId } = setup();
-  store.dispatch(sendMessage(chatId));
-  const firstCall = control.call(0);
-  firstCall.emit({ type: 'started' });
-  firstCall.emit(imageToolCall());
-  firstCall.emit(imageToolResult());
-  firstCall.emit({ type: 'text_delta', text: 'partial' });
-  await vi.waitFor(() =>
-    expect(lastAssistant(store.getState().chats.byId[chatId]).text).toBe(
-      'partial',
-    ),
-  );
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(TEST_TIME));
+  const createId = createIds();
+  const now = () => new Date().toISOString();
+  const store = createAppStore({
+    now,
+    createId,
+    agent: createMockAgent({
+      now,
+      createId,
+      timing: FIXED_MOCK_TIMING,
+      streaming: FIXED_STREAMING,
+      random: () => 0.5,
+    }),
+  });
+  stores.push(store);
+  const chatId = store.getState().chats.selectedChatId;
+  for (const draft of ['Помоги решить уравнение', 'Дальше', 'Дальше']) {
+    store.dispatch(chatActions.draftChanged({ chatId, draft }));
+    expect(store.dispatch(sendMessage(chatId))).toBe(true);
+    await vi.runAllTimersAsync();
+  }
+  const failed = lastAssistant(store.getState().chats.byId[chatId]);
+  expect(failed.run).toMatchObject({
+    status: 'failed',
+    error: { code: 'stream_failure' },
+  });
+  expect(failed.text.length).toBeGreaterThan(0);
+  expect(EQUATION_STEPS[3].answer.startsWith(failed.text)).toBe(true);
+  expect(store.getState().chats.byId[chatId]?.demonstratedFailures).toEqual([
+    'equation',
+  ]);
+  expect(selectChatSuggestions(store.getState(), chatId)).toEqual([]);
   store.dispatch(chatActions.draftChanged({ chatId, draft: 'keep draft' }));
-  const messageId = lastAssistant(store.getState().chats.byId[chatId]).id;
-  // Retry synchronously, before the cancelled reader gets its finally microtask.
-  store.dispatch(stopGeneration(chatId));
+  const messageId = failed.id;
   expect(store.dispatch(retryResponse(chatId, messageId))).toBe(true);
   expect(store.dispatch(retryResponse(chatId, messageId))).toBe(false);
-  const retryCall = control.call(1);
-  expect(retryCall.request.runId).not.toBe(firstCall.request.runId);
-  expect(retryCall.request).toMatchObject({
-    attempt: 2,
-    prompt: 'First question',
-    history: [],
-  });
-  expect(lastAssistant(store.getState().chats.byId[chatId])).toMatchObject({
+  const retry = lastAssistant(store.getState().chats.byId[chatId]);
+  expect(retry.run.id).not.toBe(failed.run.id);
+  expect(retry).toMatchObject({
     id: messageId,
     text: '',
     imageSrc: null,
-    run: { status: 'queued' },
+    run: { status: 'queued', attempt: 2, actions: [], expanded: false },
   });
+  const beforeLate = store.getState();
   store.dispatch(
     chatActions.agentEventReceived(
-      eventFor(firstCall.request, { type: 'completed' }),
+      eventFor(
+        { chatId, assistantMessageId: failed.id, runId: failed.run.id },
+        { type: 'text_delta', text: 'late' },
+      ),
     ),
   );
-  expect(retryCall.signal.aborted).toBe(false);
-  retryCall.emit({ type: 'started' });
-  retryCall.emit({ type: 'text_delta', text: 'new answer' });
-  retryCall.emit({ type: 'completed' });
-  await vi.waitFor(() =>
-    expect(lastAssistant(store.getState().chats.byId[chatId]).run.status).toBe(
-      'completed',
-    ),
-  );
-  expect(lastAssistant(store.getState().chats.byId[chatId]).text).toBe(
-    'new answer',
-  );
-  expect(store.getState().chats.byId[chatId]?.messages).toHaveLength(2);
+  expect(store.getState()).toBe(beforeLate);
+  await vi.runAllTimersAsync();
+  const completed = lastAssistant(store.getState().chats.byId[chatId]);
+  expect(completed.run.status).toBe('completed');
+  expect(completed.text).toBe(EQUATION_STEPS[3].answer);
+  expect(selectChatSuggestions(store.getState(), chatId)).toEqual([
+    'Дальше',
+    'Почему при переносе меняется знак?',
+  ]);
+  expect(store.getState().chats.byId[chatId]?.messages).toHaveLength(6);
   expect(store.getState().chats.byId[chatId]?.draft).toBe('keep draft');
+  expect(vi.getTimerCount()).toBe(0);
 });

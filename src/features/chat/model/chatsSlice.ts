@@ -133,13 +133,30 @@ function applyAgentEvent(message: AssistantMessage, event: AgentEvent) {
       };
       return;
     case 'error':
+      if (
+        event.demoFailure !== undefined &&
+        !(
+          (event.demoFailure === 'equation' &&
+            event.error.code === 'stream_failure' &&
+            run.status === 'streaming' &&
+            !!message.text) ||
+          (event.error.code === 'tool_failure' &&
+            run.status === 'processing' &&
+            run.phase.kind === 'using_tool' &&
+            ((event.demoFailure === 'calculator' &&
+              run.phase.tool === 'calculator') ||
+              (event.demoFailure === 'image' &&
+                run.phase.tool === 'generate_image')))
+        )
+      )
+        break;
       message.run = {
         ...runBase(run),
         status: 'failed',
         finishedAt: event.at,
         error: event.error,
       };
-      return;
+      return event.demoFailure;
     default: {
       const unreachable: never = event;
       throw new Error(`Unsupported event: ${String(unreachable)}`);
@@ -288,7 +305,12 @@ const chatsSlice = createSlice({
         !isActiveRun(message.run)
       )
         return;
-      applyAgentEvent(message, event);
+      const demonstratedFailure = applyAgentEvent(message, event);
+      if (demonstratedFailure) {
+        chat.demonstratedFailures ??= [];
+        if (!chat.demonstratedFailures.includes(demonstratedFailure))
+          chat.demonstratedFailures.push(demonstratedFailure);
+      }
       const completedRun = getLastAssistant(chat.messages)?.run;
       if (event.type === 'completed' && completedRun?.status === 'completed') {
         if (state.selectedChatId === event.chatId) delete chat.unreadRunId;

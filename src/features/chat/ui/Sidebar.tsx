@@ -5,9 +5,7 @@ import {
   selectChatRowMetadata,
   selectOrderedChatIds,
 } from '../model/selectors';
-import { getChatById } from '../model/helpers';
 import { ChatDialog, type ChatDialogHandle } from './ChatDialog';
-import { ERROR_PROMPTS } from './demoPrompts';
 import styles from './ChatWorkspace.module.css';
 
 const ChatRow = memo(function ChatRow({
@@ -82,40 +80,28 @@ function BrandLockup() {
   );
 }
 
-function DemoContent({
-  hasDraft,
-  onExample,
-}: {
-  hasDraft: boolean;
-  onExample: (text: string) => void;
-}) {
+function DemoContent() {
   return (
     <div className={styles.demoContent}>
       <p>
         Ответы подготовлены заранее. Лучше всего работают вопросы из примеров.
       </p>
       <p>
-        Хочешь проверить, что произойдёт при сбое? Выбери пример и отправь
-        сообщение.
+        В каждом диалоге предусмотрены три демонстрационных сбоя — по одному
+        каждого вида. Нажми «Повторить», чтобы получить полный ответ.
       </p>
-      <div className={styles.errorExamples}>
-        {ERROR_PROMPTS.map((text) => (
-          <button
-            key={text}
-            type="button"
-            disabled={hasDraft}
-            onClick={() => onExample(text)}
-          >
-            <span>{text}</span>
-            <Icon name="chevron" className={styles.demoExampleArrow ?? ''} />
-          </button>
-        ))}
-      </div>
-      {hasDraft && (
-        <p className={styles.exampleHint}>
-          Чтобы выбрать пример, сначала очисти поле
-        </p>
-      )}
+      <ul>
+        <li>Калькулятор: ошибка инструмента до получения результата.</li>
+        <li>
+          Уравнение: обрыв объяснения при переходе от приведения подобных к
+          переносу слагаемых.
+        </li>
+        <li>Схема Ньютона: ошибка генератора без готового изображения.</li>
+      </ul>
+      <p>
+        Показанные сбои запоминаются после перезагрузки. Остановка до ошибки не
+        расходует демонстрацию сбоя.
+      </p>
     </div>
   );
 }
@@ -132,7 +118,6 @@ export function Sidebar({
   onSelect,
   onDelete,
   onNewChat,
-  onExample,
 }: {
   isMobile: boolean;
   collapsed: boolean;
@@ -145,14 +130,9 @@ export function Sidebar({
   onSelect: (id: string) => void;
   onDelete: (id: string, trigger: HTMLButtonElement) => void;
   onNewChat: () => void;
-  onExample: (text: string) => void;
 }) {
   const chatIds = useAppSelector(selectOrderedChatIds);
   const aboutDialogRef = useRef<ChatDialogHandle>(null);
-  const hasDraft = useAppSelector(
-    (state) =>
-      (getChatById(state.chats, selectedChatId)?.draft.length ?? 0) > 0,
-  );
   const newChatButton = (
     <button
       type="button"
@@ -285,12 +265,7 @@ export function Sidebar({
               <Icon name="close" />
             </button>
           </div>
-          <DemoContent
-            hasDraft={hasDraft}
-            onExample={(text) =>
-              aboutDialogRef.current?.close(() => onExample(text))
-            }
-          />
+          <DemoContent />
         </ChatDialog>
       )}
     </aside>

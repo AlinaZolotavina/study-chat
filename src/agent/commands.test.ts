@@ -35,9 +35,6 @@ it.each<{ kind: Command['kind']; prompts: string[] }>([
       'Помоги решить 3 (2 х-4)+5=2(х+7), но не давай ответ сразу',
     ],
   },
-  { kind: 'demo_error', prompts: ['Покажи ошибку'] },
-  { kind: 'demo_partial_error', prompts: ['Покажи обрыв ответа'] },
-  { kind: 'demo_image_error', prompts: ['Покажи ошибку создания изображения'] },
 ])(
   'recognizes every approved $kind alias after normalization',
   ({ kind, prompts }) => {
@@ -90,6 +87,9 @@ it.each([
 );
 
 it.each([
+  'Покажи ошибку',
+  'Покажи обрыв ответа',
+  'Покажи ошибку создания изображения',
   'Объясни подробнее',
   'Решить ещё одно уравнение',
   'Пожалуйста, объясни закон Архимеда',

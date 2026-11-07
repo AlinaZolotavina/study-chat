@@ -15,9 +15,3 @@ export const LEARNING_PROMPTS = [
     description: 'Посчитаем с помощью калькулятора',
   },
 ] as const;
-
-export const ERROR_PROMPTS = [
-  'Покажи ошибку',
-  'Покажи обрыв ответа',
-  'Покажи ошибку создания изображения',
-] as const;

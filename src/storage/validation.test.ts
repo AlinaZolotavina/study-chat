@@ -27,6 +27,12 @@ it('rejects inconsistent chat IDs, order, drafts and message arrays', () => {
     { ...valid, byId: { a: { ...chat, id: 'another' } } },
     { ...valid, byId: { a: { ...chat, draft: null } } },
     { ...valid, byId: { a: { ...chat, unreadRunId: 42 } } },
+    { ...valid, byId: { a: { ...chat, demonstratedFailures: 'image' } } },
+    { ...valid, byId: { a: { ...chat, demonstratedFailures: ['unknown'] } } },
+    {
+      ...valid,
+      byId: { a: { ...chat, demonstratedFailures: ['image', 'image'] } },
+    },
     { ...valid, byId: { a: { ...chat, messages: {} } } },
     { ...valid, byId: { a: { ...chat, createdAt: 'not-a-date' } } },
   ];

@@ -47,7 +47,7 @@ export function createMockAgent(options: MockAgentOptions = {}): Agent {
     const scenario = chooseScenario(
       classifyCommand(request.prompt),
       deriveContext(request.history),
-      request.attempt,
+      request.demonstratedFailures,
     );
     await delay(timing.queuedMs, signal);
     yield event({ type: 'started' });
@@ -70,11 +70,13 @@ export function createMockAgent(options: MockAgentOptions = {}): Agent {
       await delay(sampleDuration(timing.toolUseMs, random), signal);
       let value: number;
       try {
+        if (scenario.fail) throw new Error('Mock calculator failed');
         value = calculateProduct(scenario.left, scenario.right);
       } catch {
         yield event({
           type: 'error',
           error: { code: 'tool_failure', retryable: true },
+          ...(scenario.fail ? { demoFailure: 'calculator' as const } : {}),
         });
         return;
       }
@@ -112,6 +114,7 @@ export function createMockAgent(options: MockAgentOptions = {}): Agent {
           yield event({
             type: 'error',
             error: { code: 'tool_failure', retryable: true },
+            ...(scenario.fail ? { demoFailure: 'image' as const } : {}),
           });
           return;
         }
@@ -135,15 +138,23 @@ export function createMockAgent(options: MockAgentOptions = {}): Agent {
         ),
         signal,
       );
-      for await (const delta of streamText(text, signal, streaming, random))
+      let emitted = 0;
+      for await (const delta of streamText(text, signal, streaming, random)) {
         yield event({ type: 'text_delta', text: delta });
+        emitted += 1;
+        if (scenario.kind === 'text' && scenario.interrupt && emitted === 3) {
+          signal.throwIfAborted();
+          yield event({
+            type: 'error',
+            error: { code: 'stream_failure', retryable: true },
+            demoFailure: 'equation',
+          });
+          return;
+        }
+      }
     }
     signal.throwIfAborted();
-    if (scenario.kind === 'error')
-      yield event({ type: 'error', error: scenario.error });
-    else {
-      yield actionCompleted('answer_composed');
-      yield event({ type: 'completed' });
-    }
+    yield actionCompleted('answer_composed');
+    yield event({ type: 'completed' });
   };
 }

@@ -3,6 +3,7 @@ import type {
   AgentError,
   AgentPhase,
   ToolName,
+  DemoFailureKind,
 } from '@/agent/types';
 
 export type ChatId = string;
@@ -76,6 +77,7 @@ export interface Chat {
   draft: string;
   messages: Message[];
   unreadRunId?: RunId;
+  demonstratedFailures?: DemoFailureKind[];
 }
 
 export interface ChatsState {

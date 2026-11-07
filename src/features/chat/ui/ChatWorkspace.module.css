@@ -285,8 +285,12 @@
 .demoContent p {
   margin: 0 0 12px;
 }
-.demoContent .exampleHint {
-  margin-top: 12px;
+.demoContent ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+.demoContent li + li {
+  margin-top: 8px;
 }
 .menuButton,
 .dialogClose,
@@ -505,46 +509,11 @@
     opacity: 0;
   }
 }
-.errorExamples {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-}
-.errorExamples button {
-  display: flex;
-  min-height: 44px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-  font-weight: 600;
-  text-align: left;
-  cursor: pointer;
-  transition: background 140ms;
-}
-.errorExamples button:hover:not(:disabled),
 .retryButton:hover {
   background: var(--color-accent-hover);
 }
-.errorExamples button:active:not(:disabled),
 .retryButton:active {
   box-shadow: inset 0 2px 4px rgb(0 0 0 / 12%);
-}
-.errorExamples button:disabled {
-  color: var(--color-disabled-text);
-  background: var(--color-disabled-surface);
-  cursor: not-allowed;
-}
-.demoExampleArrow {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
-  transform: rotate(-90deg);
 }
 
 .chatPanel {
@@ -1211,8 +1180,7 @@
   .activityIndicator {
     animation: none;
   }
-  .promptCard,
-  .errorExamples button {
+  .promptCard {
     transition: none;
   }
 }

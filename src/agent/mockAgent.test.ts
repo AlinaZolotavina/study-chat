@@ -10,7 +10,12 @@ import * as calculator from './tools/calculator';
 import * as scenarios from './scenarios';
 import { NEWTON_IMAGE_SRC } from './config';
 import { createMockAgent } from './mockAgent';
-import type { Agent, AgentEvent, AgentRequest } from './types';
+import {
+  DEMO_FAILURE_KINDS,
+  type Agent,
+  type AgentEvent,
+  type AgentRequest,
+} from './types';
 import { deriveContext } from './context';
 
 const runs: { controller: AbortController; finished: Promise<void> }[] = [];
@@ -18,7 +23,12 @@ const history = (...prompts: string[]) =>
   prompts.map((userText) => ({ userText, assistantText: 'unused' }));
 function start(
   prompt: string,
-  options: Partial<Pick<AgentRequest, 'history' | 'attempt' | 'chatId'>> & {
+  options: Partial<
+    Pick<
+      AgentRequest,
+      'history' | 'attempt' | 'chatId' | 'demonstratedFailures'
+    >
+  > & {
     agent?: Agent;
   } = {},
 ) {
@@ -29,6 +39,8 @@ function start(
     runId: 'run-1',
     attempt: options.attempt ?? 1,
     history: options.history ?? [],
+    // Successful response fixtures; scheduled failures explicitly pass [].
+    demonstratedFailures: options.demonstratedFailures ?? DEMO_FAILURE_KINDS,
   };
   const agent =
     options.agent ??
@@ -129,8 +141,6 @@ it.each([
     expected: ['analyzed', 'image_prepared', 'answer_composed'],
     firstTextMs: null,
   },
-  { prompt: 'Покажи ошибку', expected: ['analyzed'], firstTextMs: null },
-  { prompt: 'Покажи обрыв ответа', expected: ['analyzed'], firstTextMs: 800 },
 ])(
   'reports completed actions only after their operation, before final completion: $prompt',
   async ({ prompt, expected, firstTextMs }) => {
@@ -274,12 +284,10 @@ it.each([{ previous: [] }, { previous: history('Помоги решить ура
 );
 
 it.each([
-  { previous: [] },
+  { previous: history('Объясни второй закон Ньютона') },
   { previous: history('Объясни второй закон Ньютона', 'Проще') },
-  { previous: history('Помоги решить уравнение', 'Дальше') },
-  { previous: history('17 * 24') },
 ])(
-  'demonstrates image tool failure and a fresh successful Retry without changing context (%#)',
+  'fails the diagram tool once, then returns the real image on Retry (%#)',
   async ({ previous }) => {
     const agent = createMockAgent({
       timing: FIXED_MOCK_TIMING,
@@ -287,8 +295,12 @@ it.each([
       random: () => 0.5,
       createId: createIds('image'),
     });
-    const prompt = 'Покажи ошибку создания изображения';
-    const failed = start(prompt, { agent, history: previous });
+    const prompt = 'Покажи схему';
+    const failed = start(prompt, {
+      agent,
+      history: previous,
+      demonstratedFailures: [],
+    });
     await complete(failed);
     expect(
       failed.events.find((event) => event.type === 'tool_call'),
@@ -299,6 +311,7 @@ it.each([
     expect(failed.events.at(-1)).toMatchObject({
       type: 'error',
       error: { code: 'tool_failure', retryable: true },
+      demoFailure: 'image',
     });
     expect(failed.events.some((event) => event.type === 'tool_result')).toBe(
       false,
@@ -308,7 +321,12 @@ it.each([
         .filter((event) => event.type === 'action_completed')
         .map((event) => event.action),
     ).toEqual(['analyzed']);
-    const retry = start(prompt, { agent, history: previous, attempt: 2 });
+    const retry = start(prompt, {
+      agent,
+      history: previous,
+      attempt: 2,
+      demonstratedFailures: ['image'],
+    });
     await complete(retry);
     const call = retry.events.find((event) => event.type === 'tool_call');
     expect(call).not.toEqual(
@@ -324,7 +342,7 @@ it.each([
     expect(textOf(retry.events)).toBe('');
     expect(
       deriveContext([...previous, { userText: prompt, assistantText: '' }]),
-    ).toEqual(deriveContext(previous));
+    ).toMatchObject({ topic: 'newton', diagramShown: true });
   },
 );
 
@@ -536,6 +554,8 @@ it('finishes every prepared text response within 4 seconds even at maximum timin
     prompt: string;
     history: AgentRequest['history'];
     attempt?: number;
+    demonstratedFailures?: AgentRequest['demonstratedFailures'];
+    fails?: boolean;
   }[] = [
     { prompt: 'Объясни второй закон Ньютона', history: [] },
     {
@@ -590,12 +610,19 @@ it('finishes every prepared text response within 4 seconds even at maximum timin
       prompt,
       history: [],
     })),
-    { prompt: 'Покажи ошибку', history: [] },
-    { prompt: 'Покажи обрыв ответа', history: [] },
-    { prompt: 'Покажи ошибку', history: [], attempt: 2 },
-    { prompt: 'Покажи обрыв ответа', history: [], attempt: 2 },
-    { prompt: 'Покажи ошибку создания изображения', history: [] },
-    { prompt: 'Покажи ошибку создания изображения', history: [], attempt: 2 },
+    { prompt: '17 * 24', history: [], demonstratedFailures: [], fails: true },
+    {
+      prompt: 'Покажи схему',
+      history: history('Объясни второй закон Ньютона'),
+      demonstratedFailures: [],
+      fails: true,
+    },
+    {
+      prompt: 'Дальше',
+      history: history(equation, 'Дальше'),
+      demonstratedFailures: [],
+      fails: true,
+    },
   ];
   for (const input of cases) {
     const beginning = Date.now();
@@ -603,6 +630,7 @@ it('finishes every prepared text response within 4 seconds even at maximum timin
       agent,
       history: input.history,
       attempt: input.attempt ?? 1,
+      demonstratedFailures: input.demonstratedFailures ?? DEMO_FAILURE_KINDS,
     });
     await complete(run);
     expect(Date.now() - beginning).toBeLessThan(30_000);
@@ -613,15 +641,7 @@ it('finishes every prepared text response within 4 seconds even at maximum timin
       )
     )
       expect(Date.now() - beginning, input.prompt).toBeLessThanOrEqual(4000);
-    expect(run.events.at(-1)?.type).toBe(
-      [
-        'Покажи ошибку',
-        'Покажи обрыв ответа',
-        'Покажи ошибку создания изображения',
-      ].includes(input.prompt) && !input.attempt
-        ? 'error'
-        : 'completed',
-    );
+    expect(run.events.at(-1)?.type).toBe(input.fails ? 'error' : 'completed');
   }
 });
 
@@ -634,33 +654,64 @@ it('finishes unsupported requests as a friendly successful fallback (S-07)', asy
 });
 
 it.each([
-  { prompt: 'Покажи ошибку', code: 'demo_failure', partial: false },
   {
-    prompt: 'Покажи обрыв ответа',
-    code: 'demo_partial_failure',
+    prompt: '17 * 24',
+    failure: 'calculator' as const,
+    previous: [],
+    code: 'tool_failure',
+    partial: false,
+    fragment: '408',
+  },
+  {
+    prompt: 'Дальше',
+    failure: 'equation' as const,
+    previous: history('Помоги решить уравнение', 'Дальше'),
+    code: 'stream_failure',
     partial: true,
+    fragment: '4x = 21',
   },
 ])(
   'fails deterministically and succeeds on retry: $prompt',
-  async ({ prompt, code, partial }) => {
-    const failed = start(prompt);
+  async ({ prompt, failure, previous, code, partial, fragment }) => {
+    const failed = start(prompt, {
+      history: previous,
+      demonstratedFailures: [],
+    });
     await complete(failed);
     expect(failed.events.at(-1)).toMatchObject({
       type: 'error',
       error: { code, retryable: true },
+      demoFailure: failure,
     });
     expect(textOf(failed.events).length > 0).toBe(partial);
     if (partial)
       expect(
         failed.events.filter((event) => event.type === 'text_delta').length,
-      ).toBeGreaterThan(1);
+      ).toBe(3);
     expect(failed.events.some((event) => event.type === 'completed')).toBe(
       false,
     );
-    const retry = start(prompt, { attempt: 2 });
+    expect(
+      failed.events
+        .filter((event) => event.type === 'action_completed')
+        .map((event) => event.action),
+    ).toEqual(['analyzed']);
+    const retry = start(prompt, {
+      attempt: 2,
+      history: previous,
+      demonstratedFailures: [failure],
+    });
     await complete(retry);
     expect(retry.events.at(-1)?.type).toBe('completed');
-    expect(textOf(retry.events)).toContain('успешно');
+    expect(textOf(retry.events)).toContain(fragment);
+    expect(textOf(retry.events).startsWith(textOf(failed.events))).toBe(true);
+    const repeated = start(prompt, {
+      history: previous,
+      demonstratedFailures: [failure],
+    });
+    await complete(repeated);
+    expect(repeated.events.at(-1)?.type).toBe('completed');
+    expect(textOf(repeated.events)).toBe(textOf(retry.events));
   },
 );
 
@@ -680,6 +731,34 @@ it('does not share context between concurrent requests on the same agent instanc
   await second.finished;
   expect(textOf(first.events)).toContain('6x − 7 = 2x + 14');
   expect(textOf(second.events)).toContain('Какую задачу продолжить');
+});
+
+it('does not skip an unused failure solely because a stopped request has a higher attempt', async () => {
+  const run = start('17 * 24', { attempt: 2, demonstratedFailures: [] });
+  await complete(run);
+  expect(run.events.at(-1)).toMatchObject({
+    type: 'error',
+    demoFailure: 'calculator',
+  });
+});
+
+it('aborts an interrupted equation before the planned error without leaking a timer or event', async () => {
+  const run = start('Дальше', {
+    history: history('Помоги решить уравнение', 'Дальше'),
+    demonstratedFailures: [],
+  });
+  while (run.events.filter((event) => event.type === 'text_delta').length < 2)
+    await vi.advanceTimersToNextTimerAsync();
+  const rejected = expect(run.finished).rejects.toMatchObject({
+    name: 'AbortError',
+  });
+  run.controller.abort();
+  await rejected;
+  const count = run.events.length;
+  await vi.runAllTimersAsync();
+  expect(run.events).toHaveLength(count);
+  expect(run.events.some((event) => event.type === 'error')).toBe(false);
+  expect(vi.getTimerCount()).toBe(0);
 });
 
 it.each([

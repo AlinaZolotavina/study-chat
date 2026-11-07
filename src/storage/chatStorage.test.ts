@@ -13,6 +13,54 @@ import { loadChats, restoreInterrupted, STORAGE_KEY } from './chatStorage';
 
 const RESTORED_AT = '2026-11-06T12:00:00.000Z';
 const base = queuedRun();
+
+it('preserves consumed failures and leaves active preparation unconsumed across reload', () => {
+  const first = createEmptyChat('a', TEST_TIME);
+  first.demonstratedFailures = ['calculator', 'equation'];
+  first.messages = makeTurn({
+    ...base,
+    status: 'processing',
+    phase: { kind: 'using_tool', tool: 'generate_image', callId: 'image-call' },
+  });
+  const second = createEmptyChat('b', TEST_TIME);
+  second.demonstratedFailures = ['image'];
+  const saved = {
+    byId: { a: first, b: second },
+    order: ['a', 'b'],
+    selectedChatId: 'a',
+  };
+  const loaded = loadChats(
+    () => ({ getItem: () => JSON.stringify(saved), setItem: vi.fn() }),
+    () => RESTORED_AT,
+  );
+  if (!loaded.ok || !loaded.chats) throw new Error('Expected restored chats');
+  expect(loaded.chats.byId.a?.demonstratedFailures).toEqual([
+    'calculator',
+    'equation',
+  ]);
+  expect(loaded.chats.byId.b?.demonstratedFailures).toEqual(['image']);
+  expect(lastAssistant(loaded.chats.byId.a).run.status).toBe('interrupted');
+  expect(
+    selectCanRetry({ chats: loaded.chats }, 'a', lastAssistant(first).id),
+  ).toBe(true);
+});
+
+it('reads a snapshot without failure marks as an unused demonstration without rewriting it', () => {
+  const chat = createEmptyChat('a', TEST_TIME);
+  delete chat.demonstratedFailures;
+  const storage = {
+    getItem: () => JSON.stringify(createInitialChatsState(chat)),
+    setItem: vi.fn(),
+  };
+  const loaded = loadChats(
+    () => storage,
+    () => RESTORED_AT,
+  );
+  if (!loaded.ok || !loaded.chats) throw new Error('Expected restored chats');
+  expect(loaded.chats.byId.a?.demonstratedFailures ?? []).toEqual([]);
+  expect(loaded.needsSave).toBe(false);
+  expect(storage.setItem).not.toHaveBeenCalled();
+});
 const activeRuns: Run[] = [
   base,
   { ...base, status: 'processing', phase: { kind: 'analyzing' } },

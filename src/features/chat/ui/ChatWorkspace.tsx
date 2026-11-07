@@ -153,7 +153,6 @@ export function ChatWorkspace() {
         onSelect={onSelect}
         onDelete={onDelete}
         onNewChat={onNewChat}
-        onExample={onExample}
       />
       <main className={styles.chatPanel}>
         <header className={styles.chatHeader}>
