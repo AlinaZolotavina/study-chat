@@ -1,11 +1,16 @@
 import { useCallback, useRef, useState, useSyncExternalStore } from 'react';
 import { useAppDispatch, useAppSelector, useAppStore } from '@/app/hooks';
 import { chatActions } from '../model/chatsSlice';
-import { createChat } from '../model/commands';
+import { createChat, deleteChat } from '../model/commands';
 import { Icon } from '@/shared/Icon';
 import { selectChatRowMetadata, selectSelectedChat } from '../model/selectors';
 import { Composer } from './Composer';
-import { MessageList } from './MessageList';
+import {
+  MessageList,
+  type MessageListHandle,
+  type ScrollState,
+} from './MessageList';
+import { ChatDialog } from './ChatDialog';
 import { Sidebar } from './Sidebar';
 import { StorageNotice } from './StorageNotice';
 import styles from './ChatWorkspace.module.css';
@@ -26,12 +31,22 @@ export function ChatWorkspace() {
     null,
   );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [chatIdToDelete, setChatIdToDelete] = useState<string | null>(null);
+  const deletingChat = useAppSelector((state) =>
+    selectChatRowMetadata(state, chatIdToDelete ?? ''),
+  );
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const deleteTrigger = useRef<HTMLButtonElement | null>(null);
+  const messageListRef = useRef<MessageListHandle>(null);
+  const scrollPositions = useRef(new Map<string, ScrollState>());
   const subscribeToViewport = useCallback(
     (notify: () => void) => {
       const query = window.matchMedia(MOBILE_QUERY);
       const onChange = () => {
-        if (sidebarPanel !== null) {
+        if (sidebarPanel !== null || chatIdToDelete !== null) {
           setSidebarPanel(null);
+          setChatIdToDelete(null);
+          deleteTrigger.current = null;
           requestAnimationFrame(() =>
             headingRef.current?.focus({ preventScroll: true }),
           );
@@ -41,7 +56,7 @@ export function ChatWorkspace() {
       query.addEventListener('change', onChange);
       return () => query.removeEventListener('change', onChange);
     },
-    [sidebarPanel],
+    [sidebarPanel, chatIdToDelete],
   );
   const isMobile = useSyncExternalStore(subscribeToViewport, getIsMobile);
   const [scrollRequest, setScrollRequest] = useState(0);
@@ -51,6 +66,7 @@ export function ChatWorkspace() {
   }, []);
   const onSelect = useCallback(
     (chatId: string) => {
+      messageListRef.current?.savePosition();
       setSidebarPanel(null);
       dispatch(chatActions.chatSelected(chatId));
       requestAnimationFrame(() =>
@@ -60,6 +76,7 @@ export function ChatWorkspace() {
     [dispatch],
   );
   const onNewChat = useCallback(() => {
+    messageListRef.current?.savePosition();
     setSidebarPanel(null);
     dispatch(createChat());
     requestAnimationFrame(() =>
@@ -68,6 +85,44 @@ export function ChatWorkspace() {
       }),
     );
   }, [dispatch, isMobile]);
+  const onDelete = useCallback((chatId: string, trigger: HTMLButtonElement) => {
+    deleteTrigger.current = trigger;
+    setChatIdToDelete(chatId);
+  }, []);
+
+  function cancelDelete() {
+    const trigger = deleteTrigger.current;
+    deleteTrigger.current = null;
+    setChatIdToDelete(null);
+    requestAnimationFrame(() => {
+      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+      else headingRef.current?.focus({ preventScroll: true });
+    });
+  }
+
+  function confirmDelete() {
+    if (!chatIdToDelete) return;
+    const { chats } = store.getState();
+    const index = chats.order.indexOf(chatIdToDelete);
+    const selected = chats.selectedChatId === chatIdToDelete;
+    messageListRef.current?.savePosition();
+    const deleted = dispatch(deleteChat(chatIdToDelete));
+    deleteTrigger.current = null;
+    if (deleted) scrollPositions.current.delete(chatIdToDelete);
+    setChatIdToDelete(null);
+    if (selected) setSidebarPanel(null);
+    const remaining = store.getState().chats;
+    const neighbor = remaining.order[index] ?? remaining.order[index - 1];
+    requestAnimationFrame(() => {
+      const button = Array.from(
+        workspaceRef.current?.querySelectorAll<HTMLButtonElement>(
+          'button[data-chat-id]',
+        ) ?? [],
+      ).find((element) => element.dataset.chatId === neighbor);
+      if (!selected && button) button.focus({ preventScroll: true });
+      else headingRef.current?.focus({ preventScroll: true });
+    });
+  }
   const onExample = useCallback(
     (text: string) => {
       const chat = selectSelectedChat(store.getState());
@@ -83,6 +138,7 @@ export function ChatWorkspace() {
 
   return (
     <div
+      ref={workspaceRef}
       className={`${styles.workspace} ${!isMobile && sidebarCollapsed ? styles.collapsedWorkspace : ''}`}
     >
       <Sidebar
@@ -95,6 +151,7 @@ export function ChatWorkspace() {
         onCloseAbout={() => setSidebarPanel(isMobile ? 'chats' : null)}
         selectedChatId={selectedChatId}
         onSelect={onSelect}
+        onDelete={onDelete}
         onNewChat={onNewChat}
         onExample={onExample}
       />
@@ -121,8 +178,10 @@ export function ChatWorkspace() {
         </header>
         <StorageNotice />
         <MessageList
+          ref={messageListRef}
           key={selectedChatId}
           chatId={selectedChatId}
+          positions={scrollPositions}
           scrollRequest={scrollRequest}
           onExample={onExample}
           onRequestStarted={onRequestStarted}
@@ -133,6 +192,39 @@ export function ChatWorkspace() {
           onSent={onRequestStarted}
         />
       </main>
+      {deletingChat && (
+        <ChatDialog
+          id="delete-chat-dialog"
+          labelledBy="delete-chat-title"
+          className={styles.deleteDialog ?? ''}
+          onClose={cancelDelete}
+        >
+          <h2 id="delete-chat-title">Удалить диалог?</h2>
+          <p>
+            Диалог{' '}
+            <strong className={styles.deleteChatTitle}>
+              «{deletingChat.title}»
+            </strong>
+            , его сообщения и черновик будут удалены с этого устройства.
+            Отменить удаление не получится.
+          </p>
+          {deletingChat.isActive && (
+            <p>Подготовка ответа в этом диалоге будет остановлена.</p>
+          )}
+          <div className={styles.deleteDialogActions}>
+            <button type="button" onClick={cancelDelete} autoFocus>
+              Отмена
+            </button>
+            <button
+              type="button"
+              className={styles.confirmDelete}
+              onClick={confirmDelete}
+            >
+              Удалить диалог
+            </button>
+          </div>
+        </ChatDialog>
+      )}
     </div>
   );
 }

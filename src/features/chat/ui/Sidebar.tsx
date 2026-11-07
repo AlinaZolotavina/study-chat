@@ -14,10 +14,12 @@ const ChatRow = memo(function ChatRow({
   chatId,
   selected,
   onSelect,
+  onDelete,
 }: {
   chatId: string;
   selected: boolean;
   onSelect: (chatId: string) => void;
+  onDelete: (chatId: string, trigger: HTMLButtonElement) => void;
 }) {
   const metadata = useAppSelector((state) =>
     selectChatRowMetadata(state, chatId),
@@ -33,7 +35,7 @@ const ChatRow = memo(function ChatRow({
     .filter(Boolean)
     .join(', ');
   return (
-    <li>
+    <li className={styles.chatListItem}>
       <button
         type="button"
         className={`${styles.chatRow} ${selected ? styles.selectedRow : ''} ${metadata.isActive ? styles.generatingRow : ''}`}
@@ -41,6 +43,7 @@ const ChatRow = memo(function ChatRow({
         aria-current={selected ? 'true' : undefined}
         aria-label={accessibleName}
         title={metadata.title}
+        data-chat-id={chatId}
       >
         <Icon name="chat" className={styles.chatIcon ?? ''} />
         <span className={styles.chatTitle}>{metadata.title}</span>
@@ -51,6 +54,15 @@ const ChatRow = memo(function ChatRow({
             <Icon name="warning" className={styles.rowError ?? ''} />
           ) : null}
         </span>
+      </button>
+      <button
+        type="button"
+        className={styles.deleteChatButton}
+        aria-label={`Удалить диалог «${metadata.title}»`}
+        title="Удалить диалог"
+        onClick={(event) => onDelete(chatId, event.currentTarget)}
+      >
+        <Icon name="trash" />
       </button>
     </li>
   );
@@ -118,6 +130,7 @@ export function Sidebar({
   onCloseAbout,
   selectedChatId,
   onSelect,
+  onDelete,
   onNewChat,
   onExample,
 }: {
@@ -130,6 +143,7 @@ export function Sidebar({
   onCloseAbout: () => void;
   selectedChatId: string;
   onSelect: (id: string) => void;
+  onDelete: (id: string, trigger: HTMLButtonElement) => void;
   onNewChat: () => void;
   onExample: (text: string) => void;
 }) {
@@ -180,6 +194,7 @@ export function Sidebar({
               chatId={chatId}
               selected={chatId === selectedChatId}
               onSelect={onSelect}
+              onDelete={onDelete}
             />
           ))}
         </ul>

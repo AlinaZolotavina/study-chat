@@ -10,6 +10,7 @@ type IconName =
   | 'info'
   | 'menu'
   | 'close'
+  | 'trash'
   | 'panel_open'
   | 'panel_close'
   | 'chevron';
@@ -33,6 +34,7 @@ export function Icon({
     info: 'M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0ZM10 9v5m0-8v.1',
     menu: 'M3 5h14M3 10h14M3 15h14',
     close: 'm5 5 10 10M15 5 5 15',
+    trash: 'M3 5h14M7 5V3h6v2M5 5l1 12h8l1-12M8 8v6m4-6v6',
     panel_open: 'M3 3h14v14H3V3Zm4 0v14m4-10 3 3-3 3',
     panel_close: 'M3 3h14v14H3V3Zm4 0v14m6-10-3 3 3 3',
     chevron: 'm6 8 4 4 4-4',
