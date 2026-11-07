@@ -9,10 +9,12 @@ import styles from './ChatWorkspace.module.css';
 
 export function Composer({
   chatId,
+  isMobile,
   inputRef,
   onSent,
 }: {
   chatId: string;
+  isMobile: boolean;
   inputRef: RefObject<HTMLTextAreaElement | null>;
   onSent: () => void;
 }) {
@@ -24,14 +26,19 @@ export function Composer({
   const active = useAppSelector((state) => !!selectActiveRun(state, chatId));
   const id = useId();
   const tooLong = draft.length > MAX_MESSAGE_LENGTH;
+  const hasHint = !isMobile && !active;
+  const description =
+    [hasHint ? `${id}-hint` : '', tooLong ? `${id}-error` : '']
+      .filter(Boolean)
+      .join(' ') || undefined;
   useLayoutEffect(() => {
     const input = inputRef.current;
     if (!input) return;
     input.style.height = '0px';
     const limit =
       window.innerHeight < 500 ? 96 : Math.min(160, window.innerHeight * 0.3);
-    input.style.height = `${Math.max(52, Math.min(input.scrollHeight, limit))}px`;
-  }, [draft, chatId, inputRef]);
+    input.style.height = `${Math.max(isMobile ? 44 : 52, Math.min(input.scrollHeight, limit))}px`;
+  }, [draft, chatId, inputRef, isMobile]);
 
   function send() {
     if (dispatch(sendMessage(chatId))) onSent();
@@ -45,9 +52,6 @@ export function Composer({
       }}
     >
       <div className={styles.composerInner}>
-        <label className={styles.inputLabel} htmlFor={id}>
-          Сообщение
-        </label>
         <div
           className={`${styles.inputBox} ${tooLong ? styles.invalidInput : ''}`}
         >
@@ -57,9 +61,10 @@ export function Composer({
             className={styles.textarea}
             rows={1}
             value={draft}
-            placeholder="Напиши вопрос по учёбе…"
+            placeholder="Спроси LOM AI"
+            aria-label="Сообщение"
             aria-invalid={tooLong}
-            aria-describedby={`${id}-hint${tooLong ? ` ${id}-error` : ''}`}
+            aria-describedby={description}
             onChange={(event) =>
               dispatch(
                 chatActions.draftChanged({ chatId, draft: event.target.value }),
@@ -102,11 +107,11 @@ export function Composer({
           </p>
         )}
         <div className={styles.composerFooter}>
-          <p id={`${id}-hint`} className={styles.composerHint}>
-            {active
-              ? 'Можно написать следующий вопрос. Отправить его получится после ответа'
-              : 'Enter — отправить · Shift+Enter — новая строка'}
-          </p>
+          {hasHint && (
+            <p id={`${id}-hint`} className={styles.composerHint}>
+              Enter — отправить · Shift+Enter — новая строка
+            </p>
+          )}
           <span
             className={`${styles.counter} ${tooLong ? styles.errorText : ''}`}
             aria-label="Количество символов"

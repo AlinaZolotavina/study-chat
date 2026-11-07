@@ -1,6 +1,7 @@
 import {
   useCallback,
   useReducer,
+  useRef,
   useState,
   useSyncExternalStore,
   type CSSProperties,
@@ -9,6 +10,9 @@ import { NEWTON_IMAGE_ALT } from '@/agent/tools/generateImage';
 import type { Run } from '../model/types';
 import { localImageUrl } from './contentPolicy';
 import { imageAnimationReducer, initialImageAnimation } from './imageAnimation';
+import { Icon } from '@/shared/Icon';
+import { ImageViewer } from './ImageViewer';
+import { useImageDownload } from './useImageDownload';
 import styles from './ChatWorkspace.module.css';
 
 const MOTION_QUERY = '(prefers-reduced-motion: reduce)';
@@ -58,6 +62,13 @@ export function MessageImage({
     initialImageAnimation,
   );
   const [failed, setFailed] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const opener = useRef<HTMLButtonElement>(null);
+  const {
+    pending,
+    error: downloadError,
+    download,
+  } = useImageDownload(imageSrc);
   if (animation.phase === 'idle' && preparing) dispatch({ type: 'start' });
   else if (
     (reducedMotion ||
@@ -87,20 +98,30 @@ export function MessageImage({
         ) : (
           <>
             {src && (
-              <img
-                src={src}
-                width={1672}
-                height={941}
-                alt={imageAlt ?? NEWTON_IMAGE_ALT}
-                loading="lazy"
-                className={`${!ready && animation.phase !== 'revealing' ? styles.imageLoading : ''} ${animation.phase === 'revealing' ? styles.imageReveal : ''}`}
-                onLoad={() => dispatch({ type: 'loaded' })}
-                onError={() => setFailed(true)}
-                onAnimationEnd={(event) => {
-                  if (event.target === event.currentTarget)
-                    dispatch({ type: 'ended', phase: 'revealing' });
-                }}
-              />
+              <button
+                ref={opener}
+                type="button"
+                className={styles.imageOpenButton}
+                aria-label="Открыть изображение в полном размере"
+                title="Открыть изображение в полном размере"
+                disabled={!ready}
+                onClick={() => setViewerOpen(true)}
+              >
+                <img
+                  src={src}
+                  width={1672}
+                  height={941}
+                  alt={imageAlt ?? NEWTON_IMAGE_ALT}
+                  loading="lazy"
+                  className={`${!ready && animation.phase !== 'revealing' ? styles.imageLoading : ''} ${animation.phase === 'revealing' ? styles.imageReveal : ''}`}
+                  onLoad={() => dispatch({ type: 'loaded' })}
+                  onError={() => setFailed(true)}
+                  onAnimationEnd={(event) => {
+                    if (event.target === event.currentTarget)
+                      dispatch({ type: 'ended', phase: 'revealing' });
+                  }}
+                />
+              </button>
             )}
             {!ready && animation.phase !== 'revealing' && (
               <div
@@ -136,7 +157,40 @@ export function MessageImage({
             )}
           </>
         )}
+        {ready && !error && (
+          <button
+            type="button"
+            className={`${styles.responseActionButton} ${styles.imageDownloadButton}`}
+            aria-label="Скачать изображение"
+            title="Скачать изображение"
+            aria-busy={pending}
+            disabled={pending}
+            onClick={() => void download()}
+          >
+            <Icon name="download" />
+          </button>
+        )}
+        <span
+          role="status"
+          aria-atomic="true"
+          className={
+            downloadError ? styles.imageDownloadError : styles.visuallyHidden
+          }
+        >
+          {downloadError ? 'Не удалось скачать изображение' : ''}
+        </span>
       </div>
+      {viewerOpen && ready && !error && src && (
+        <ImageViewer
+          src={src}
+          alt={imageAlt ?? NEWTON_IMAGE_ALT}
+          opener={opener}
+          pending={pending}
+          error={downloadError}
+          onDownload={() => void download()}
+          onClose={() => setViewerOpen(false)}
+        />
+      )}
     </figure>
   );
 }

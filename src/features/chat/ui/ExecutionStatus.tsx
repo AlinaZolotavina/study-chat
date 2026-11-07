@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 import { useAppDispatch } from '@/app/hooks';
 import { Icon } from '@/shared/Icon';
 import { chatActions } from '../model/chatsSlice';
@@ -11,9 +11,11 @@ import styles from './ChatWorkspace.module.css';
 export function ExecutionStatus({
   chatId,
   message,
+  actions,
 }: {
   chatId: string;
   message: AssistantMessage;
+  actions?: ReactNode;
 }) {
   const dispatch = useAppDispatch();
   const historyId = useId();
@@ -23,33 +25,36 @@ export function ExecutionStatus({
     run.status === 'failed' ? 'История действий' : getAgentStatusLabel(run);
   return (
     <div className={styles.execution}>
-      <button
-        type="button"
-        className={styles.executionToggle}
-        aria-expanded={run.expanded}
-        aria-controls={historyId}
-        onClick={() =>
-          dispatch(
-            chatActions.executionExpandedChanged({
-              chatId,
-              assistantMessageId: message.id,
-              runId: run.id,
-              expanded: !run.expanded,
-            }),
-          )
-        }
-      >
-        {active && (
-          <span className={styles.activityIndicator} aria-hidden="true" />
-        )}
-        <span role="status" aria-atomic="true">
-          {label}
-        </span>
-        <Icon
-          name="chevron"
-          className={`${styles.executionChevron} ${run.expanded ? styles.executionChevronExpanded : ''}`}
-        />
-      </button>
+      <div className={styles.executionHeader}>
+        <button
+          type="button"
+          className={styles.executionToggle}
+          aria-expanded={run.expanded}
+          aria-controls={historyId}
+          onClick={() =>
+            dispatch(
+              chatActions.executionExpandedChanged({
+                chatId,
+                assistantMessageId: message.id,
+                runId: run.id,
+                expanded: !run.expanded,
+              }),
+            )
+          }
+        >
+          {active && (
+            <span className={styles.activityIndicator} aria-hidden="true" />
+          )}
+          <span role="status" aria-atomic="true">
+            {label}
+          </span>
+          <Icon
+            name="chevron"
+            className={`${styles.executionChevron} ${run.expanded ? styles.executionChevronExpanded : ''}`}
+          />
+        </button>
+        {actions}
+      </div>
       <div
         id={historyId}
         className={`${styles.executionHistory} ${run.expanded ? styles.executionHistoryExpanded : ''}`}

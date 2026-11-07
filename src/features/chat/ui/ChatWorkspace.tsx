@@ -187,6 +187,7 @@ export function ChatWorkspace() {
         />
         <Composer
           chatId={selectedChatId}
+          isMobile={isMobile}
           inputRef={inputRef}
           onSent={onRequestStarted}
         />

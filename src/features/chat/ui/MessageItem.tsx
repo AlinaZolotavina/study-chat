@@ -8,6 +8,8 @@ import { MessageImage } from './MessageImage';
 import { MarkdownContent } from './MarkdownContent';
 import { SuggestedReplies } from './SuggestedReplies';
 import { ExecutionStatus } from './ExecutionStatus';
+import { CopyResponse } from './CopyResponse';
+import { isActiveRun } from '../model/helpers';
 import styles from './ChatWorkspace.module.css';
 
 export const MessageItem = memo(function MessageItem({
@@ -49,7 +51,15 @@ export const MessageItem = memo(function MessageItem({
               run={message.run}
             />
             {message.text && <MarkdownContent text={message.text} />}
-            <ExecutionStatus chatId={chatId} message={message} />
+            <ExecutionStatus
+              chatId={chatId}
+              message={message}
+              actions={
+                !isActiveRun(message.run) && message.text.trim() ? (
+                  <CopyResponse key={message.run.id} text={message.text} />
+                ) : null
+              }
+            />
             {failed && (
               <div
                 className={`${styles.agentStatus} ${failed ? styles.errorText : ''}`}

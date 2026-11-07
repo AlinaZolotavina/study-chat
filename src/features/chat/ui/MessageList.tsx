@@ -207,10 +207,9 @@ export function MessageList({
       >
         {messages.length === 0 ? (
           <section className={styles.emptyState} aria-labelledby="empty-title">
-            <h2 id="empty-title">Разберёмся с задачей вместе</h2>
+            <h2 id="empty-title">С чем нужна помощь?</h2>
             <p className={styles.emptyDescription}>
-              Задай вопрос по учёбе или выбери пример. Можно попросить объяснить
-              проще или разбирать задачу по шагам.
+              Задай вопрос, проверь вычисление или выбери, с чего начать.
             </p>
             <div className={styles.promptGrid}>
               {LEARNING_PROMPTS.map((prompt) => (

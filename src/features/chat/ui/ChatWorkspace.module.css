@@ -134,11 +134,9 @@
   color: var(--color-on-accent);
   font-weight: 500;
 }
-.newChatButton:hover {
-  background: var(--color-accent-hover);
-}
+.newChatButton:hover,
 .jumpBar button:hover {
-  background: var(--color-canvas);
+  background: var(--color-accent-hover);
 }
 .sidebarTitle {
   margin: 0;
@@ -349,7 +347,7 @@
 .menuDialog {
   position: fixed;
   inset: 0 auto 0 0;
-  width: 70vw;
+  width: 80vw;
   max-width: none;
   height: 100dvh;
   max-height: none;
@@ -548,7 +546,7 @@
 .demoBadge {
   flex-shrink: 0;
   padding: 8px 16px;
-  border: 1px solid var(--color-control-border);
+  border: 0;
   border-radius: 14px;
   color: var(--color-focus);
   font-size: 14px;
@@ -574,6 +572,7 @@
   margin: 0;
 }
 .conversationArea {
+  position: relative;
   display: flex;
   min-height: 0;
   flex: 1;
@@ -826,6 +825,7 @@
 .executionToggle {
   display: flex;
   max-width: 100%;
+  min-width: 0;
   min-height: 44px;
   align-items: center;
   gap: 8px;
@@ -839,6 +839,11 @@
 }
 .executionToggle:hover {
   color: var(--color-text);
+}
+.executionHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
 }
 .executionChevron {
   width: 16px;
@@ -982,6 +987,171 @@
   width: 100%;
   height: auto;
 }
+.imageOpenButton {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+.imageOpenButton:disabled {
+  cursor: default;
+}
+.imageOpenButton:focus-visible {
+  outline-offset: -4px;
+}
+.responseActions {
+  position: relative;
+  display: flex;
+  min-height: 44px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+.responseActionButton {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.responseActionButton:hover:not(:disabled) {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
+.responseActionButton:active:not(:disabled) {
+  background: var(--color-option-surface);
+}
+.responseActionButton:disabled {
+  cursor: default;
+}
+.responseActionButton[aria-busy='true'] {
+  opacity: 0.6;
+}
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.copyError,
+.imageDownloadError {
+  position: absolute;
+  z-index: 2;
+  padding: 6px 10px;
+  border: 1px solid var(--color-danger);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-danger);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.copyError {
+  top: 100%;
+  right: 0;
+  width: max-content;
+  max-width: min(240px, 80vw);
+}
+.imageDownloadButton {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  box-shadow: 0 1px 6px rgb(20 43 43 / 12%);
+  backdrop-filter: blur(10px);
+}
+.imageDownloadButton:hover:not(:disabled) {
+  background: rgb(0 0 0 / 72%);
+  color: #fff;
+}
+.imageDownloadButton:active:not(:disabled) {
+  background: rgb(0 0 0 / 82%);
+}
+.imageDownloadError {
+  right: 8px;
+  bottom: 60px;
+  max-width: calc(100% - 16px);
+}
+.imageViewer {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  overflow: hidden;
+  background: #101b1d;
+  color: #f5fffd;
+}
+.imageViewer[open] {
+  display: flex;
+  flex-direction: column;
+}
+.imageViewerToolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding: max(8px, env(safe-area-inset-top)) 16px 4px;
+}
+.imageViewerToolbar > button {
+  grid-row: 1;
+  color: inherit;
+}
+.imageViewerToolbar > button:hover:not(:disabled) {
+  background: rgb(255 255 255 / 12%);
+  color: inherit;
+}
+.viewerDownloadStatus {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  min-height: 20px;
+  color: #ffc6c6;
+  font-size: 13px;
+}
+.imageViewerBody {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px max(16px, env(safe-area-inset-bottom));
+}
+.imageViewerCanvas {
+  position: relative;
+  flex: 0 1 auto;
+  max-width: 100%;
+  line-height: 0;
+}
+.imageViewerBody img {
+  width: auto;
+  height: auto;
+  max-width: calc(100vw - 32px);
+  max-height: calc(
+    100dvh - 84px - env(safe-area-inset-top, 0px) -
+      env(safe-area-inset-bottom, 0px)
+  );
+  min-height: 0;
+  object-fit: contain;
+}
 .imageLoading {
   opacity: 0;
 }
@@ -1006,13 +1176,40 @@
   color: var(--color-danger);
 }
 .jumpBar {
+  position: absolute;
+  z-index: 2;
+  inset: auto 0 0;
   display: flex;
-  flex: 0 0 auto;
   justify-content: center;
-  padding: 4px 16px;
+  padding: 24px 16px 16px;
+  pointer-events: none;
+}
+.jumpBar::before,
+.jumpBar::after {
+  position: absolute;
+  z-index: 0;
+  inset: -32px 0 0;
+  pointer-events: none;
+  content: '';
+}
+.jumpBar::before {
+  backdrop-filter: blur(4px);
+  mask-image: linear-gradient(to bottom, transparent, #000 70%);
+}
+.jumpBar::after {
+  background: linear-gradient(to bottom, transparent, rgb(245 255 253 / 28%));
+  backdrop-filter: blur(12px);
+  mask-image: linear-gradient(to bottom, transparent 20%, #000);
 }
 .jumpBar button {
-  background: var(--color-surface);
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  border-color: transparent;
+  border-radius: 14px;
+  background: var(--gradient-accent);
+  color: var(--color-on-accent);
+  box-shadow: 0 5px 16px rgb(0 128 120 / 12%);
 }
 
 .composer {
@@ -1022,12 +1219,6 @@
 .composerInner {
   max-width: var(--content-width);
   margin: 0 auto;
-}
-.inputLabel {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 14px;
-  font-weight: 600;
 }
 .inputBox {
   display: flex;
@@ -1117,6 +1308,7 @@
   line-height: 1.45;
 }
 .counter {
+  margin-inline-start: auto;
   flex-shrink: 0;
   color: var(--color-text-muted);
   font-size: 14px;
@@ -1251,7 +1443,7 @@
 }
 @media (width < 768px) {
   .workspace {
-    --mobile-header-height: calc(64px + env(safe-area-inset-top, 0px));
+    --mobile-header-height: calc(40px + env(safe-area-inset-top, 0px));
 
     display: flex;
     flex-direction: column;
@@ -1268,34 +1460,43 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 8px;
     height: var(--mobile-header-height);
-    padding: calc(12px + env(safe-area-inset-top, 0px)) 12px 12px;
+    padding: env(safe-area-inset-top, 0px) 12px 0;
+  }
+  .sidebarHeader .dialogClose {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    flex-basis: 40px;
   }
   .brandCaption {
     display: none;
   }
   .brandLockup {
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     margin: 0;
   }
   .brand {
-    font-size: 22px;
+    font-size: 18px;
   }
   .brandMark {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     margin: 0;
   }
   .chatPanel {
     flex: 1;
   }
   .chatHeader {
-    min-height: 56px;
-    margin-inline: 12px;
-    padding-block: 8px;
+    position: relative;
+    z-index: 3;
+    min-height: 45px;
+    margin-inline: 0;
+    padding: 0 12px;
     gap: 8px;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 6%);
   }
   .headerTitle h1 {
     font-size: 16px;
@@ -1304,17 +1505,30 @@
     flex: 1;
   }
   .demoBadge {
-    padding: 6px 8px;
+    padding: 4px 6px;
     border-radius: 10px;
-    font-size: 12px;
+    font-size: 11px;
   }
   .conversation {
-    padding: 24px 12px;
+    padding: 16px 12px;
   }
   .composer {
     padding-inline: 12px;
-    padding-top: 8px;
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    padding-top: 6px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .inputBox {
+    padding: 6px 8px 6px 12px;
+  }
+  .textarea {
+    min-height: 44px;
+    padding-block: 10px;
+  }
+  .composerActions {
+    padding-bottom: 0;
+  }
+  .jumpBar {
+    padding: 12px 12px 8px;
   }
   .storageNotice {
     margin-inline: 12px;
@@ -1323,13 +1537,20 @@
     padding-top: 8px;
   }
   .emptyState h2 {
-    font-size: 24px;
+    font-size: 20px;
+  }
+  .emptyDescription {
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+  .demoNote {
+    margin-top: 16px;
   }
   .promptGrid {
     grid-template-columns: 1fr;
   }
   .promptCard {
-    min-height: 88px;
+    min-height: 0;
   }
   .userBubble {
     max-width: 100%;
@@ -1337,6 +1558,22 @@
   }
   .composerFooter {
     gap: 8px;
+    margin-top: 6px;
+  }
+  .counter {
+    font-size: 12px;
+  }
+}
+@media (width < 768px) and (height < 700px) {
+  .jumpBar button {
+    min-height: 40px;
+    gap: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  .jumpBar button svg {
+    width: 16px;
+    height: 16px;
   }
 }
 @media (height < 500px) {
