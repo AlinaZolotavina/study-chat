@@ -15,6 +15,31 @@ it('offers exactly three independent actions after the first Newton explanation'
   expect(suggestions(newton)).toEqual(actions);
 });
 
+it('recognizes short Newton phrases as the same completed actions', () => {
+  expect(suggestions('2 закон ньютона')).toEqual(actions);
+  expect(suggestions('второй закон ньютона', 'попроще')).toEqual([
+    'Покажи схему',
+    'Приведи пример из жизни',
+  ]);
+  expect(
+    suggestions('2 закон ньютона', 'попроще', 'дай схему', 'пример'),
+  ).toEqual([]);
+});
+
+it('consumes equation aliases only on their current stage without advancing the solution', () => {
+  expect(suggestions(equation, 'почему получилось -7?')).toEqual([
+    'Дальше',
+    'Почему нужно раскрывать скобки?',
+  ]);
+  const second = [equation, 'Дальше', 'почему получилось -7?'];
+  expect(suggestions(...second)).toEqual(['Дальше']);
+  const third = [...second, 'Дальше', 'почему поменялся знак?'];
+  expect(suggestions(...third)).toEqual(['Дальше']);
+  expect(suggestions(...third, 'Дальше', 'объясни проверку решения')).toEqual([
+    'Покажи проверку подробнее',
+  ]);
+});
+
 it.each([
   { order: [0, 1, 2] },
   { order: [0, 2, 1] },

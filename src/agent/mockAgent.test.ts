@@ -377,23 +377,28 @@ it('solves the fixed equation in steps without leaking the answer early (S-04/S-
   expect(textOf(repeated.events)).toContain('уже решено');
 });
 
-it.each(['Сколько будет 17 × 24?', '17 * 24', '17 * 24.'])(
-  'runs the calculator and uses its matching result in the response (S-06): %s',
-  async (prompt) => {
+it.each([
+  { prompt: 'Сколько будет 17 × 24?', left: 17, value: 408 },
+  { prompt: '17 * 24', left: 17, value: 408 },
+  { prompt: '17 * 24.', left: 17, value: 408 },
+  { prompt: '7*24', left: 7, value: 168 },
+])(
+  'runs the calculator and uses its matching result in the response (S-06): $prompt',
+  async ({ prompt, left, value }) => {
     const run = start(prompt);
     await complete(run);
     const call = run.events.find((event) => event.type === 'tool_call');
     expect(call).toMatchObject({
       type: 'tool_call',
       tool: 'calculator',
-      input: { operation: 'multiply', left: 17, right: 24 },
+      input: { operation: 'multiply', left, right: 24 },
     });
     expect(
       run.events.find((event) => event.type === 'tool_result'),
     ).toMatchObject({
       callId: call?.callId,
       tool: 'calculator',
-      output: { value: 408 },
+      output: { value },
     });
     expect(
       run.events
@@ -408,7 +413,7 @@ it.each(['Сколько будет 17 × 24?', '17 * 24', '17 * 24.'])(
       'action_completed',
       'completed',
     ]);
-    expect(textOf(run.events)).toContain('408');
+    expect(textOf(run.events)).toContain(String(value));
     expect(call?.callId).toBeTruthy();
   },
 );
