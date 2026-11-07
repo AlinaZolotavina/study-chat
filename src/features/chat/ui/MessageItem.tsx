@@ -61,7 +61,7 @@ export const MessageItem = memo(function MessageItem({
         <div className={styles.messageAuthor} id={`author-${message.id}`}>
           {assistant && (
             <span className={styles.agentAvatar} aria-hidden="true">
-              L
+              <Icon name="sparkle" />
             </span>
           )}
           {assistant ? 'LOM AI' : 'Вы'}

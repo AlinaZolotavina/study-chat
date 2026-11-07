@@ -3,10 +3,15 @@ type IconName =
   | 'send'
   | 'stop'
   | 'chat'
-  | 'book'
   | 'down'
   | 'retry'
   | 'warning'
+  | 'sparkle'
+  | 'info'
+  | 'menu'
+  | 'close'
+  | 'panel_open'
+  | 'panel_close'
   | 'chevron';
 
 export function Icon({
@@ -18,12 +23,18 @@ export function Icon({
 }) {
   const paths: Record<Exclude<IconName, 'stop'>, string> = {
     plus: 'M10 4v12M4 10h12',
-    send: 'M10 16V4m-5 5 5-5 5 5',
-    chat: 'M4 3h12a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H8l-5 3V4a1 1 0 0 1 1-1Z',
-    book: 'M10 5C8 3 5 3 2 4v12c3-1 6-1 8 1m0-12c2-2 5-2 8-1v12c-3-1-6-1-8 1V5Z',
+    send: 'm17 3-5 14-3-6-6-3 14-5ZM9 11l8-8',
+    chat: 'M17 9c0 4-3 7-7 7-1 0-2 0-3-.5L3 17l1.5-4C4 12 3 11 3 9a7 7 0 1 1 14 0Z',
     down: 'M10 4v12m-5-5 5 5 5-5',
     retry: 'M16 7a6 6 0 1 0 0 6M16 3v4h-4',
     warning: 'm10 2 8 15H2L10 2Zm0 5v4m0 3v.5',
+    sparkle:
+      'M10 2C11.5 7 13 8.5 18 10c-5 1.5-6.5 3-8 8-1.5-5-3-6.5-8-8 5-1.5 6.5-3 8-8Z',
+    info: 'M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0ZM10 9v5m0-8v.1',
+    menu: 'M3 5h14M3 10h14M3 15h14',
+    close: 'm5 5 10 10M15 5 5 15',
+    panel_open: 'M3 3h14v14H3V3Zm4 0v14m4-10 3 3-3 3',
+    panel_close: 'M3 3h14v14H3V3Zm4 0v14m6-10-3 3 3 3',
     chevron: 'm6 8 4 4 4-4',
   };
   return (
@@ -31,7 +42,7 @@ export function Icon({
       width="20"
       height="20"
       viewBox="0 0 20 20"
-      fill="none"
+      fill={name === 'sparkle' ? 'currentColor' : 'none'}
       stroke="currentColor"
       strokeWidth="1.6"
       strokeLinecap="round"

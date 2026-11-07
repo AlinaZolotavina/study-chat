@@ -62,9 +62,6 @@ export function MessageList({
       >
         {messages.length === 0 ? (
           <section className={styles.emptyState} aria-labelledby="empty-title">
-            <div className={styles.welcomeMark}>
-              <Icon name="book" />
-            </div>
             <h2 id="empty-title">Разберёмся с задачей вместе</h2>
             <p className={styles.emptyDescription}>
               Задай вопрос по учёбе или выбери пример. Можно попросить объяснить
