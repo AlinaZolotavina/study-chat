@@ -29,6 +29,7 @@ export function ExecutionStatus({
         <button
           type="button"
           className={styles.executionToggle}
+          aria-label={label ?? undefined}
           aria-expanded={run.expanded}
           aria-controls={historyId}
           onClick={() =>

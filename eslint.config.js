@@ -37,6 +37,10 @@ export default defineConfig([
     languageOptions: { globals: globals.node },
   },
   {
+    files: ['e2e/**/*.ts'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
+  {
     files: ['**/*.js'],
     extends: [js.configs.recommended],
   },
