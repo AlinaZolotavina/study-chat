@@ -79,7 +79,7 @@ test('E2E-01: Newton, image failure and Retry, simplification and reload', async
     });
   });
 
-  await page.goto('/');
+  await page.goto('./');
   await expect(
     page.getByRole('heading', { name: 'С чем нужна помощь?' }),
   ).toBeVisible();

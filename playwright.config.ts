@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test';
 
-const baseURL = 'http://127.0.0.1:4174';
+const baseURL = 'http://127.0.0.1:4174/study-chat/';
 
 export default defineConfig({
   testDir: './e2e',
