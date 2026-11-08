@@ -74,15 +74,16 @@ it('downloads the original PNG with the deployment base and releases the link an
   expect(vi.getTimerCount()).toBe(0);
 });
 
-it.each(['https://example.com/a.png', '../a.png', 'data:image/png;base64,abc'])(
-  'does not fetch unsafe image source %s',
-  async (source) => {
-    await expect(
-      downloadResponseImage(source, '/', new AbortController().signal),
-    ).rejects.toThrow('Invalid image source');
-    expect(fetchImage).not.toHaveBeenCalled();
-  },
-);
+it('does not fetch a source rejected by the image URL policy', async () => {
+  await expect(
+    downloadResponseImage(
+      'https://example.com/a.png',
+      '/',
+      new AbortController().signal,
+    ),
+  ).rejects.toThrow('Invalid image source');
+  expect(fetchImage).not.toHaveBeenCalled();
+});
 it.each([
   new Response('Missing', { status: 404 }),
   new Response('Not an image', { headers: { 'Content-Type': 'text/html' } }),

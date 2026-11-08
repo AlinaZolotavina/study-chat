@@ -146,7 +146,7 @@ it('restores a consumed equation question from history without adding serialized
   ]);
   expect(restored.chats.byId.a?.messages).toHaveLength(4);
   expect(restored.chats.byId.a?.draft).toBe('keep draft');
-  expect(raw).not.toContain('questionAnswered');
+  expect(JSON.stringify(restored.chats)).not.toContain('questionAnswered');
 });
 
 it('recomputes current suggestions after reload and hides them for interrupted responses', () => {

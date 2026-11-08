@@ -102,9 +102,8 @@ it('provides the final solution and correct substitution without continuing past
   const previous = [equation, 'Дальше', 'Дальше', 'Дальше'];
   const final = text(equation, ...previous);
   expect(final).toContain('x = 21/4 = 5,25');
-  const x = 21 / 4;
-  expect(3 * (2 * x - 4) + 5).toBe(24.5);
-  expect(2 * (x + 7)).toBe(24.5);
+  expect(final).toContain('19,5 + 5 = **24,5**');
+  expect(final).toContain('2 · 12,25 = **24,5**');
   expect(text('Покажи проверку подробнее', ...previous)).toContain(
     '19,5 + 5 = 24,5',
   );

@@ -474,24 +474,163 @@ it('cancels only the addressed run and disposes the remaining one', async () => 
   expect(vi.getTimerCount()).toBe(0);
 });
 
-it('does not dispatch an event addressed to a different chat', async () => {
+it('dispatches only events matching the complete request identity', async () => {
+  const validEvents: AgentEventData[] = [
+    { type: 'started' },
+    { type: 'text_delta', text: 'answer' },
+    { type: 'completed' },
+  ];
   const agent: Agent = async function* (request) {
-    yield eventFor({ ...request, chatId: 'b' }, { type: 'started' });
-    yield eventFor(request, { type: 'started' });
-    yield eventFor(request, { type: 'text_delta', text: 'answer' });
-    yield eventFor(request, { type: 'completed' });
+    for (const meta of [
+      { ...request, chatId: 'b' },
+      { ...request, assistantMessageId: 'another-message' },
+      { ...request, runId: 'another-run' },
+    ])
+      yield eventFor(meta, { type: 'started' });
+    for (const event of validEvents) yield eventFor(request, event);
   };
   const context = setup(agent, 1000);
   context.dispatch(chatActions.chatCreated(createEmptyChat('b', TEST_TIME)));
   context.executor.send('a');
+  const message = lastAssistant(context.state().byId.a);
   await vi.waitFor(() =>
-    expect(lastAssistant(context.state().byId.a).run.status).toBe('completed'),
+    expect(lastAssistant(context.state().byId.a)).toMatchObject({
+      text: 'answer',
+      run: { status: 'completed' },
+    }),
+  );
+  const delivered = context.dispatch.mock.calls
+    .map(([action]) => action)
+    .filter(chatActions.agentEventReceived.match)
+    .map((action) => action.payload);
+  expect(delivered).toEqual(
+    validEvents.map((event) =>
+      eventFor(
+        {
+          chatId: 'a',
+          assistantMessageId: message.id,
+          runId: message.run.id,
+        },
+        event,
+      ),
+    ),
   );
   expect(context.state().byId.b?.messages).toEqual([]);
+});
+
+it('drops an already resolved delta when Stop and Retry happen before its continuation', async () => {
+  vi.useFakeTimers();
+  const control = createControlledAgent();
+  const context = setup(control.agent);
+  expect(context.executor.send('a')).toBe(true);
+  const first = control.call(0);
+  first.emit({ type: 'started' });
+  first.emit({ type: 'text_delta', text: 'partial' });
+  await vi.advanceTimersByTimeAsync(0);
+  const message = lastAssistant(context.state().byId.a);
+  expect(message.text).toBe('partial');
+
+  // Resolve next() while the run is still active, then stop before consume resumes.
+  // Emitting only after Stop would let the controlled iterator discard the event.
+  first.emit({ type: 'text_delta', text: 'late delta' });
+  await Promise.resolve();
+  expect(context.executor.stop('a')).toBe(true);
+  expect(lastAssistant(context.state().byId.a)).toMatchObject({
+    text: 'partial',
+    run: { status: 'cancelled' },
+  });
+  expect(context.executor.retry('a', message.id)).toBe(true);
+  const retry = control.call(1);
+  await vi.advanceTimersByTimeAsync(0);
+  expect(first.signal.aborted).toBe(true);
+  expect(retry.signal.aborted).toBe(false);
+  expect(retry.request.runId).not.toBe(first.request.runId);
   expect(context.dispatch).not.toHaveBeenCalledWith(
     expect.objectContaining({
       type: chatActions.agentEventReceived.type,
-      payload: expect.objectContaining({ chatId: 'b' }),
+      payload: expect.objectContaining({
+        runId: first.request.runId,
+        text: 'late delta',
+      }),
     }),
   );
+  expect(lastAssistant(context.state().byId.a)).toMatchObject({
+    text: '',
+    run: { status: 'queued', id: retry.request.runId },
+  });
+  retry.emit({ type: 'started' });
+  retry.emit({ type: 'text_delta', text: 'new answer' });
+  retry.emit({ type: 'completed' });
+  await vi.advanceTimersByTimeAsync(0);
+  expect(lastAssistant(context.state().byId.a)).toMatchObject({
+    text: 'new answer',
+    run: { status: 'completed' },
+  });
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+it('retries two consecutive failures with the same successful history and no duplicate messages', async () => {
+  vi.useFakeTimers();
+  const chat = createEmptyChat('a', TEST_TIME);
+  const past = makeTurn(
+    { ...queuedRun('past'), status: 'completed', finishedAt: TEST_TIME },
+    'successful explanation',
+    'past',
+  );
+  past[0].text = 'Помоги решить уравнение';
+  chat.messages = past;
+  chat.draft = 'Дальше';
+  const control = createControlledAgent();
+  const context = setup(control.agent, 1000, createInitialChatsState(chat));
+  expect(context.executor.send('a')).toBe(true);
+  context.dispatch(
+    chatActions.draftChanged({ chatId: 'a', draft: 'keep draft' }),
+  );
+  const messageId = lastAssistant(context.state().byId.a).id;
+  const history = [{ userText: past[0].text, assistantText: past[1].text }];
+
+  for (let index = 0; index < 2; index += 1) {
+    const call = control.call(index);
+    expect(call.request).toMatchObject({
+      prompt: 'Дальше',
+      assistantMessageId: messageId,
+      attempt: index + 1,
+      history,
+    });
+    call.emit({ type: 'started' });
+    call.emit({ type: 'text_delta', text: `partial-${index}` });
+    call.emit({
+      type: 'error',
+      error: { code: 'stream_failure', retryable: true },
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(lastAssistant(context.state().byId.a)).toMatchObject({
+      text: `partial-${index}`,
+      run: { status: 'failed', error: { code: 'stream_failure' } },
+    });
+    expect(context.executor.retry('a', messageId)).toBe(true);
+    expect(lastAssistant(context.state().byId.a)).toMatchObject({
+      id: messageId,
+      text: '',
+      imageSrc: null,
+      run: { status: 'queued', attempt: index + 2 },
+    });
+  }
+  const last = control.call(2);
+  expect(last.request.history).toEqual(history);
+  expect(last.request.prompt).toBe('Дальше');
+  expect(new Set(control.calls.map((call) => call.request.runId)).size).toBe(3);
+  last.emit({ type: 'started' });
+  last.emit({ type: 'text_delta', text: 'complete answer' });
+  last.emit({ type: 'completed' });
+  await vi.advanceTimersByTimeAsync(0);
+  expect(lastAssistant(context.state().byId.a)).toMatchObject({
+    id: messageId,
+    text: 'complete answer',
+    run: { status: 'completed', attempt: 3 },
+  });
+  expect(context.state().byId.a?.messages).toHaveLength(4);
+  expect(context.state().byId.a?.messages.slice(0, 2)).toEqual(past);
+  expect(context.state().byId.a?.draft).toBe('keep draft');
+  expect(vi.getTimerCount()).toBe(0);
 });

@@ -99,7 +99,7 @@ Streaming: 80 слов/с ±10%, фрагменты 8–24 Unicode code points, 
 
 ## Проверки и ограничения
 
-npm run check выполняет проверку типов, ESLint, Prettier и 472 теста Vitest (468 unit + 4 integration). Постоянных integration-сценариев четыре; требования к единственному E2E описаны в quality requirements, сам Playwright-тест пока не добавлен.
+npm run check выполняет проверку типов, ESLint, Prettier и 450 тестов Vitest (446 unit + 4 integration). Постоянных integration-сценариев четыре; требования к единственному E2E описаны в quality requirements, сам Playwright-тест пока не добавлен.
 
 Интерфейс проверяется в Chrome: обычное окно, эмуляция desktop/tablet/mobile в DevTools и автоматические проверки в headless Chrome. По согласованию реальные устройства и другие браузеры в приёмку не входят; работа физической экранной клавиатуры и safe area не подтверждена. Фоновые таймеры браузера могут замедлять имитацию; несколько вкладок не синхронизируются. Последние изменения до debounce могут потеряться при reload. Старые ответы без actions/expanded не поддерживаются; миграций нет.
 

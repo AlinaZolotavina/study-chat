@@ -8,12 +8,14 @@ import {
 } from './helpers';
 
 describe('draft validation', () => {
-  it.each(['', '  \n\t', 'x'.repeat(4001), ' '.repeat(4001)])(
-    'rejects invalid input (%#)',
-    (input) => {
-      expect(validateDraft(input).valid).toBe(false);
-    },
-  );
+  it.each([
+    { input: '', reason: 'empty' },
+    { input: '  \n\t', reason: 'empty' },
+    { input: 'x'.repeat(4001), reason: 'too_long' },
+    { input: ' '.repeat(4000) + 'x', reason: 'too_long' },
+  ])('rejects invalid input as $reason (%#)', ({ input, reason }) => {
+    expect(validateDraft(input)).toEqual({ valid: false, reason });
+  });
   it('counts UTF-16 units, preserves internal newlines and trims only edges', () => {
     expect(validateDraft('🙂'.repeat(2000)).valid).toBe(true);
     expect(validateDraft('🙂'.repeat(2001))).toEqual({

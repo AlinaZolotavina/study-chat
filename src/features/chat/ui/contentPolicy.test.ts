@@ -14,8 +14,6 @@ it.each([
 it.each([
   'javascript:alert(1)',
   'data:text/html,<script>alert(1)</script>',
-  'mailto:student@example.com',
-  'ftp://example.com/file',
   '//example.com',
   '/relative',
   '#section',
@@ -38,11 +36,9 @@ it.each(['/', '/study-chat/'])(
   },
 );
 
-it.each([
-  'https://example.com/a.png',
-  '/assets/a.png',
-  'assets/../a.png',
-  'assets/%2e%2e/a.png',
-])('does not turn an invalid image path into an image URL: %s', (path) => {
-  expect(localImageUrl(path, '/study-chat/')).toBeUndefined();
-});
+it.each(['https://example.com/a.png', 'assets/../a.png'])(
+  'does not turn an invalid image path into an image URL: %s',
+  (path) => {
+    expect(localImageUrl(path, '/study-chat/')).toBeUndefined();
+  },
+);

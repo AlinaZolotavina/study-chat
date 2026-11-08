@@ -68,20 +68,39 @@ it('advances the equation only on next, caps its last step and preserves progres
 });
 
 it.each([
-  'Покажи ошибку',
-  'Покажи обрыв ответа',
-  'Неизвестный вопрос',
-  'Объясни подробнее',
-])(
-  'preserves learning context across completed neutral requests: %s',
-  (prompt) => {
-    expect(
-      deriveContext(history(newton, 'Покажи схему', prompt)),
-    ).toMatchObject({ topic: 'newton', diagramShown: true, simplified: false });
-    expect(deriveContext(history(equation, 'Дальше', prompt))).toMatchObject({
+  { topic: 'none', previous: [], expected: { topic: 'none' } },
+  {
+    topic: 'newton',
+    previous: [newton, 'Покажи схему'],
+    expected: {
+      topic: 'newton',
+      simplified: false,
+      diagramShown: true,
+      exampleShown: false,
+    },
+  },
+  {
+    topic: 'equation',
+    previous: [equation, 'Дальше', 'Почему −12 + 5 = −7?'],
+    expected: {
       topic: 'equation',
       step: 2,
-    });
+      questionAnswered: true,
+      verificationDetailed: false,
+      verificationExplained: false,
+    },
+  },
+  {
+    topic: 'calculator',
+    previous: ['17 * 24'],
+    expected: { topic: 'calculator' },
+  },
+])(
+  'preserves the complete $topic context across a successful fallback',
+  ({ previous, expected }) => {
+    expect(deriveContext(history(...previous, 'Неизвестный вопрос'))).toEqual(
+      expected,
+    );
   },
 );
 
@@ -151,20 +170,6 @@ it('ignores contextual commands without their topic', () => {
       ),
     ),
   ).toEqual({ topic: 'none' });
-});
-
-it('treats the removed image-error command as neutral fallback in every learning context', () => {
-  for (const prompts of [
-    [],
-    ['Объясни второй закон Ньютона', 'Проще'],
-    [equation, 'Дальше'],
-    ['17 * 24'],
-  ]) {
-    const before = deriveContext(history(...prompts));
-    expect(
-      deriveContext(history(...prompts, 'Покажи ошибку создания изображения')),
-    ).toEqual(before);
-  }
 });
 
 it('tracks question usage only for the matching current stage, then clears it on advancement', () => {
