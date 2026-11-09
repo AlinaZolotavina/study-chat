@@ -81,7 +81,7 @@ export function Composer({
             {active && (
               <button
                 type="button"
-                className={styles.iconButton}
+                className={`${styles.iconButton} ${styles.stopButton}`}
                 aria-label="Остановить ответ"
                 title="Остановить ответ"
                 onClick={() => dispatch(stopGeneration(chatId))}

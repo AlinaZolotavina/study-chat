@@ -1284,6 +1284,15 @@
 .iconButton:hover:not(:disabled) {
   background: var(--color-sidebar);
 }
+.stopButton {
+  border-color: transparent;
+  border-radius: 14px;
+  background: var(--gradient-accent);
+  color: var(--color-on-accent);
+}
+.stopButton:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
 .sendButton {
   border-color: transparent;
   background: var(--gradient-accent);
