@@ -21,11 +21,11 @@ Live demo: https://alinazolotavina.github.io/study-chat/
 
 Start each scenario in a new chat. The prompts below are in Russian because that is the language supported by the demo.
 
-| Prompt | Try | Built-in failure |
-| --- | --- | --- |
-| «Объясни второй закон Ньютона» (Explain Newton's second law) | Ask for a simpler explanation, a diagram, or a real-life example in any order. | The first «Покажи схему» (Show a diagram) request fails while preparing the image. Retry returns the diagram. |
-| «Помоги решить уравнение» (Help me solve an equation) | Solve `3(2x − 4) + 5 = 2(x + 7)` step by step with «Дальше» (Next) and questions about the current step. | After `6x − 7 = 2x + 14`, choose «Дальше»: the explanation of moving terms starts and is interrupted. Retry returns the complete explanation and `4x = 21`. |
-| «Сколько будет 17 × 24?» (What is 17 × 24?) | Call the calculator and get `408` after Retry. | The first calculation fails in the calculator tool. Retry returns `408`. |
+| Prompt                                                       | Try                                                                                                      | Built-in failure                                                                                                                                            |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| «Объясни второй закон Ньютона» (Explain Newton's second law) | Ask for a simpler explanation, a diagram, or a real-life example in any order.                           | The first «Покажи схему» (Show a diagram) request fails while preparing the image. Retry returns the diagram.                                               |
+| «Помоги решить уравнение» (Help me solve an equation)        | Solve `3(2x − 4) + 5 = 2(x + 7)` step by step with «Дальше» (Next) and questions about the current step. | After `6x − 7 = 2x + 14`, choose «Дальше»: the explanation of moving terms starts and is interrupted. Retry returns the complete explanation and `4x = 21`. |
+| «Сколько будет 17 × 24?» (What is 17 × 24?)                  | Call the calculator and get `408` after Retry.                                                           | The first calculation fails in the calculator tool. Retry returns `408`.                                                                                    |
 
 The calculator accepts integer expressions without an app-defined size limit, using addition (`+`), subtraction (`-`), multiplication (`×`, `*`, `x`), or division (`/`, `÷`). Very large numbers are limited by JavaScript's `Number` precision. Division by zero is not supported.
 
@@ -42,15 +42,15 @@ npm run dev
 
 Open http://127.0.0.1:5173/. If the port is busy, Vite prints the actual address.
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Start the development server. |
-| `npm run check` | Run TypeScript, ESLint, Prettier, and Vitest checks. |
-| `npm run test:e2e` | Run the Playwright E2E in Google Chrome against a production build. |
-| `npm run check:all` | Run all checks, including the E2E suite. |
-| `npm run build` | Create a production build in `dist`. |
-| `npm run preview` | Preview the build at http://127.0.0.1:4173/study-chat/. |
-| `npm run test:watch` | Run Vitest in watch mode. |
+| Command              | Purpose                                                             |
+| -------------------- | ------------------------------------------------------------------- |
+| `npm run dev`        | Start the development server.                                       |
+| `npm run check`      | Run TypeScript, ESLint, Prettier, and Vitest checks.                |
+| `npm run test:e2e`   | Run the Playwright E2E in Google Chrome against a production build. |
+| `npm run check:all`  | Run all checks, including the E2E suite.                            |
+| `npm run build`      | Create a production build in `dist`.                                |
+| `npm run preview`    | Preview the build at http://127.0.0.1:4173/study-chat/.             |
+| `npm run test:watch` | Run Vitest in watch mode.                                           |
 
 Run `npm run build` before `npm run preview`.
 
@@ -132,18 +132,4 @@ Both fixes are covered by regression tests.
 
 - Expand browser and accessibility checks, including tests on physical mobile devices.
 - Add E2E coverage for multiple chats, Stop, and recovery from errors.
-
-There is currently one Playwright E2E: E2E-01 in [learning-chat.spec.ts](e2e/learning-chat.spec.ts). It exercises the Newton's second law conversation and verifies that users can:
-
-- Send a question and receive relevant suggestions.
-- Keep a draft while sending a suggested reply.
-- See the demo image-tool failure, retry, and receive the diagram.
-- Observe the image animation stages and execution history.
-- Choose «Объясни проще» (Explain it more simply) and continue the conversation.
-- Reload the page and restore the conversation, draft, and completed image without replaying the animation.
-
-The test also checks saved data in `localStorage` and confirms that the page reports no errors. It runs in Chrome against a production build served by Vite preview.
-
-The Stop button is only checked for visibility while a response is running; the E2E does not click it. There are no separate E2E tests for arithmetic, the equation flow, or creating and deleting chats.
-
 - When connecting a real agent, add a transport adapter while keeping the existing event contract.
