@@ -16,7 +16,8 @@ type IconName =
   | 'download'
   | 'panel_open'
   | 'panel_close'
-  | 'chevron';
+  | 'chevron'
+  | 'globe';
 
 export function Icon({
   name,
@@ -44,6 +45,7 @@ export function Icon({
     panel_open: 'M3 3h14v14H3V3Zm4 0v14m4-10 3 3-3 3',
     panel_close: 'M3 3h14v14H3V3Zm4 0v14m6-10-3 3 3 3',
     chevron: 'm6 8 4 4 4-4',
+    globe: 'M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM2 10h16M10 2a12 12 0 0 1 0 16M10 2a12 12 0 0 0 0 16',
   };
   return (
     <svg

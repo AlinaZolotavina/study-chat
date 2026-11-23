@@ -22,6 +22,8 @@ import type {
 
 const initialState: ChatsState = { byId: {}, order: [], selectedChatId: '' };
 
+// The single transition point for a run: validate events against the current phase,
+// match tool results to their calls, and turn protocol violations into errors.
 function applyAgentEvent(message: AssistantMessage, event: AgentEvent) {
   const run = message.run;
   const responseReady =
@@ -76,9 +78,11 @@ function applyAgentEvent(message: AssistantMessage, event: AgentEvent) {
         !['analyzing', 'composing'].includes(run.phase.kind) ||
         !event.callId ||
         !(event.tool === 'calculator'
-          ? [event.input.left, event.input.right].every(
-              (value) => Number.isInteger(value) && Math.abs(value) <= 10_000,
-            )
+          ? ['add', 'subtract', 'multiply', 'divide'].includes(
+              event.input.operation,
+            ) &&
+            [event.input.left, event.input.right].every(Number.isInteger) &&
+            !(event.input.operation === 'divide' && event.input.right === 0)
           : event.tool === 'generate_image' &&
             isGenerateImageInput(event.input))
       )
@@ -294,6 +298,8 @@ const chatsSlice = createSlice({
         return;
       message.run.expanded = payload.expanded;
     },
+    // In addition to validating the agent protocol, check that the chat, message,
+    // and run are still current: the executor may have cancelled a queued event.
     agentEventReceived(state, { payload: event }: PayloadAction<AgentEvent>) {
       const chat = getChatById(state, event.chatId);
       const message = chat && getLastAssistant(chat.messages);

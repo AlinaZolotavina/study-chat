@@ -38,6 +38,7 @@ test('E2E-01: Newton, image failure and Retry, simplification and reload', async
   // Record short CSS stages as they happen, rather than trying to catch them
   // through polling or changing the app's animation speed for the test.
   await page.addInitScript(() => {
+    localStorage.setItem('lom-ai:language', 'ru');
     window.__lomImageStages = [];
     let previous: string | undefined;
     const observer = new MutationObserver(() => {
@@ -205,7 +206,7 @@ test('E2E-01: Newton, image failure and Retry, simplification and reload', async
     expect(answer.run.attempt).toBe(failedAnswer.run.attempt + 1);
     expect(answer.run.status).toBe('completed');
     expect(answer.text).toBe('');
-    expect(answer.imageSrc).toBe('assets/newtons-2nd-law-of-motion.png');
+    expect(answer.imageSrc).toBe('assets/rus-newtons-2nd-law-of-motion.png');
     await expect(input).toHaveValue(draft);
   });
 

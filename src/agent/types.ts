@@ -2,6 +2,7 @@ import type {
   GenerateImageInput,
   GenerateImageResult,
 } from './tools/generateImage';
+import type { Language } from '@/shared/language';
 
 export type AgentErrorCode =
   // Readable in previously saved failures; no standalone demo commands emit these.
@@ -44,10 +45,13 @@ export interface AgentRequest {
   readonly runId: string;
   readonly attempt: number;
   readonly prompt: string;
+  readonly language?: Language;
   readonly history: readonly AgentHistoryTurn[];
   readonly demonstratedFailures: readonly DemoFailureKind[];
 }
 
+// The agent communicates with requestExecutor only through this contract: the request
+// contains a context snapshot, and events describe the response lifecycle independently of the UI.
 export interface AgentEventMeta {
   chatId: string;
   assistantMessageId: string;
@@ -63,7 +67,11 @@ export type AgentEventData =
       type: 'tool_call';
       callId: string;
       tool: 'calculator';
-      input: { operation: 'multiply'; left: number; right: number };
+      input: {
+        operation: 'add' | 'subtract' | 'multiply' | 'divide';
+        left: number;
+        right: number;
+      };
     }
   | {
       type: 'tool_result';

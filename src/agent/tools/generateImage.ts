@@ -1,5 +1,13 @@
 import { delay } from '@/shared/delay';
-import { MOCK_TIMING, NEWTON_IMAGE_SRC } from '../config';
+import en from '@/locales/en.json';
+import { getDictionary } from '@/app/i18n';
+import type { Language } from '@/shared/language';
+import {
+  getNewtonImageSrc,
+  MOCK_TIMING,
+  NEWTON_IMAGE_SRC_EN,
+  NEWTON_IMAGE_SRC_RU,
+} from '../config';
 
 export interface GenerateImageInput {
   topic: 'newton';
@@ -12,9 +20,11 @@ export interface GenerateImageResult {
   alt: string;
 }
 
-export const NEWTON_IMAGE_ALT =
-  'Второй закон Ньютона: сила и ускорение направлены одинаково; a = F / m. При той же массе удвоение силы удваивает ускорение, при той же силе удвоение массы уменьшает его вдвое.';
+export const NEWTON_IMAGE_ALT = en.agent.newton.imageAlt;
+export const NEWTON_IMAGE_ALT_RU = getDictionary('ru').agent.newton.imageAlt;
 
+// This demo tool does not generate a bitmap or make a network request. After an
+// abortable delay, it returns a local asset for the UI to display.
 export function isGenerateImageInput(
   value: unknown,
 ): value is GenerateImageInput {
@@ -37,7 +47,9 @@ export function isGenerateImageResult(
     'status' in value &&
     value.status === 'success' &&
     'imageSrc' in value &&
-    value.imageSrc === NEWTON_IMAGE_SRC &&
+    (value.imageSrc === NEWTON_IMAGE_SRC_EN ||
+      value.imageSrc === NEWTON_IMAGE_SRC_RU ||
+      value.imageSrc === 'assets/newtons-2nd-law-of-motion.png') &&
     'alt' in value &&
     typeof value.alt === 'string' &&
     value.alt.trim().length > 0
@@ -50,7 +62,8 @@ export async function generateImage(
   {
     delayMs = MOCK_TIMING.imageMs.minMs,
     fail = false,
-  }: { delayMs?: number; fail?: boolean } = {},
+    language = 'en',
+  }: { delayMs?: number; fail?: boolean; language?: Language } = {},
 ): Promise<GenerateImageResult> {
   if (!isGenerateImageInput(input))
     throw new RangeError('Unsupported image request');
@@ -59,7 +72,7 @@ export async function generateImage(
   if (fail) throw new Error('Mock image generation failed');
   return {
     status: 'success',
-    imageSrc: NEWTON_IMAGE_SRC,
-    alt: NEWTON_IMAGE_ALT,
+    imageSrc: getNewtonImageSrc(language),
+    alt: getDictionary(language).agent.newton.imageAlt,
   };
 }

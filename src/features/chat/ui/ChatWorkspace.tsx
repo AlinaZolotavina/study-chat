@@ -1,5 +1,8 @@
-import { useCallback, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useAppDispatch, useAppSelector, useAppStore } from '@/app/hooks';
+import { appActions } from '@/app/appSlice';
+import { localizeChatTitle } from '@/app/i18n';
+import { useLocale } from '@/app/useLocale';
 import { chatActions } from '../model/chatsSlice';
 import { createChat, deleteChat } from '../model/commands';
 import { Icon } from '@/shared/Icon';
@@ -19,8 +22,11 @@ const MOBILE_QUERY = '(width < 768px)';
 const getIsMobile = () => window.matchMedia(MOBILE_QUERY).matches;
 
 export function ChatWorkspace() {
+  // Workspace connects the sidebar, history, and composer. It keeps only shell
+  // state locally (panels, focus, and scroll), not chat domain data.
   const dispatch = useAppDispatch();
   const store = useAppStore();
+  const { language, locale } = useLocale();
   const selectedChatId = useAppSelector((state) => state.chats.selectedChatId);
   const metadata = useAppSelector((state) =>
     selectChatRowMetadata(state, selectedChatId),
@@ -37,6 +43,9 @@ export function ChatWorkspace() {
   );
   const workspaceRef = useRef<HTMLDivElement>(null);
   const deleteTrigger = useRef<HTMLButtonElement | null>(null);
+  const languageMenuRef = useRef<HTMLDivElement>(null);
+  const languageButtonRef = useRef<HTMLButtonElement>(null);
+  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const messageListRef = useRef<MessageListHandle>(null);
   const scrollPositions = useRef(new Map<string, ScrollState>());
   const subscribeToViewport = useCallback(
@@ -78,13 +87,13 @@ export function ChatWorkspace() {
   const onNewChat = useCallback(() => {
     messageListRef.current?.savePosition();
     setSidebarPanel(null);
-    dispatch(createChat());
+    dispatch(createChat(locale.ui.newChatTitle));
     requestAnimationFrame(() =>
       (isMobile ? headingRef.current : inputRef.current)?.focus({
         preventScroll: true,
       }),
     );
-  }, [dispatch, isMobile]);
+  }, [dispatch, isMobile, locale.ui.newChatTitle]);
   const onDelete = useCallback((chatId: string, trigger: HTMLButtonElement) => {
     deleteTrigger.current = trigger;
     setChatIdToDelete(chatId);
@@ -106,7 +115,7 @@ export function ChatWorkspace() {
     const index = chats.order.indexOf(chatIdToDelete);
     const selected = chats.selectedChatId === chatIdToDelete;
     messageListRef.current?.savePosition();
-    const deleted = dispatch(deleteChat(chatIdToDelete));
+    const deleted = dispatch(deleteChat(chatIdToDelete, locale.ui.newChatTitle));
     deleteTrigger.current = null;
     if (deleted) scrollPositions.current.delete(chatIdToDelete);
     setChatIdToDelete(null);
@@ -135,6 +144,31 @@ export function ChatWorkspace() {
     },
     [dispatch, store],
   );
+  useEffect(() => {
+    if (!languageMenuOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!languageMenuRef.current?.contains(event.target as Node)) {
+        setLanguageMenuOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setLanguageMenuOpen(false);
+        languageButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [languageMenuOpen]);
+
+  const chooseLanguage = (nextLanguage: 'ru' | 'en') => {
+    dispatch(appActions.languageChanged(nextLanguage));
+    setLanguageMenuOpen(false);
+  };
 
   return (
     <div
@@ -160,7 +194,7 @@ export function ChatWorkspace() {
             <button
               type="button"
               className={styles.menuButton}
-              aria-label="Открыть меню диалогов"
+              aria-label={locale.ui.mobileMenu}
               aria-expanded={sidebarPanel !== null}
               aria-controls="mobile-chat-menu"
               onClick={() => setSidebarPanel('chats')}
@@ -169,11 +203,53 @@ export function ChatWorkspace() {
             </button>
           )}
           <div className={styles.headerTitle}>
-            <h1 ref={headingRef} tabIndex={-1} title={metadata?.title}>
-              {metadata?.title ?? 'Новый диалог'}
+            <h1
+              ref={headingRef}
+              tabIndex={-1}
+              title={metadata ? localizeChatTitle(metadata.title, language) : undefined}
+            >
+              {metadata
+                ? localizeChatTitle(metadata.title, language)
+                : locale.ui.newChatTitle}
             </h1>
           </div>
-          {!isMobile && <span className={styles.demoBadge}>Демоверсия</span>}
+          <div className={styles.headerActions}>
+            <span className={styles.demoBadge}>{locale.ui.demoBadge}</span>
+            <div className={styles.languagePicker} ref={languageMenuRef}>
+              <button
+                ref={languageButtonRef}
+                type="button"
+                className={styles.languageButton}
+                aria-label={locale.ui.languageSwitch}
+                title={locale.ui.languageSwitch}
+                aria-haspopup="menu"
+                aria-expanded={languageMenuOpen}
+                onClick={() => setLanguageMenuOpen((open) => !open)}
+              >
+                <Icon name="globe" />
+                <span>{language.toUpperCase()}</span>
+                <Icon name="chevron" className={styles.languageChevron ?? ''} />
+              </button>
+              {languageMenuOpen && (
+                <div className={styles.languageMenu} role="menu" aria-label={locale.ui.languageSwitch}>
+                  {(['en', 'ru'] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={language === option}
+                      onClick={() => chooseLanguage(option)}
+                    >
+                      {option.toUpperCase()}
+                      {language === option && (
+                        <Icon name="check" className={styles.languageCheck ?? ''} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </header>
         <StorageNotice />
         <MessageList
@@ -199,28 +275,29 @@ export function ChatWorkspace() {
           className={styles.deleteDialog ?? ''}
           onClose={cancelDelete}
         >
-          <h2 id="delete-chat-title">Удалить диалог?</h2>
+          <h2 id="delete-chat-title">{locale.ui.deleteDialog.title}</h2>
           <p>
-            Диалог{' '}
+            {locale.ui.deleteDialog.beforeTitle}{' '}
             <strong className={styles.deleteChatTitle}>
-              «{deletingChat.title}»
+              {language === 'ru'
+                ? `«${localizeChatTitle(deletingChat.title, language)}»`
+                : `“${localizeChatTitle(deletingChat.title, language)}”`}
             </strong>
-            , его сообщения и черновик будут удалены с этого устройства.
-            Отменить удаление не получится.
+            {locale.ui.deleteDialog.afterTitle}
           </p>
           {deletingChat.isActive && (
-            <p>Подготовка ответа в этом диалоге будет остановлена.</p>
+            <p>{locale.ui.deleteDialog.activeNotice}</p>
           )}
           <div className={styles.deleteDialogActions}>
             <button type="button" onClick={cancelDelete} autoFocus>
-              Отмена
+              {locale.ui.deleteDialog.cancel}
             </button>
             <button
               type="button"
               className={styles.confirmDelete}
               onClick={confirmDelete}
             >
-              Удалить диалог
+              {locale.ui.deleteDialog.confirm}
             </button>
           </div>
         </ChatDialog>

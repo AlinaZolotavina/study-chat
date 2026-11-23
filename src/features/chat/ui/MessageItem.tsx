@@ -10,6 +10,7 @@ import { SuggestedReplies } from './SuggestedReplies';
 import { ExecutionStatus } from './ExecutionStatus';
 import { CopyResponse } from './CopyResponse';
 import { isActiveRun } from '../model/helpers';
+import { useLocale } from '@/app/useLocale';
 import styles from './ChatWorkspace.module.css';
 
 export const MessageItem = memo(function MessageItem({
@@ -23,12 +24,15 @@ export const MessageItem = memo(function MessageItem({
   onRequestStarted: () => void;
   isLast: boolean;
 }) {
+  // This component renders the User/Assistant union. Status, Retry, response actions,
+  // and suggested replies are available only for assistant messages.
   const dispatch = useAppDispatch();
+  const { language, locale } = useLocale();
   const canRetry = useAppSelector((state) =>
     selectCanRetry(state, chatId, message.id),
   );
   const assistant = message.role === 'assistant';
-  const status = assistant ? getAgentStatusLabel(message.run) : null;
+  const status = assistant ? getAgentStatusLabel(message.run, language) : null;
   const failed = assistant && message.run.status === 'failed';
   return (
     <li className={assistant ? styles.assistantMessage : styles.userBubble}>
@@ -37,7 +41,7 @@ export const MessageItem = memo(function MessageItem({
           {assistant && (
             <Icon name="sparkle" className={styles.agentMark ?? ''} />
           )}
-          {assistant ? 'LOM AI' : 'Вы'}
+          {assistant ? locale.ui.messageItem.assistant : locale.ui.messageItem.user}
         </div>
         {!assistant ? (
           <p className={styles.userText}>{message.text}</p>
@@ -74,14 +78,14 @@ export const MessageItem = memo(function MessageItem({
               <button
                 type="button"
                 className={styles.retryButton}
-                aria-label="Повторить ответ на последний вопрос"
+                aria-label={locale.ui.messageItem.retryLabel}
                 onClick={() => {
-                  if (dispatch(retryResponse(chatId, message.id)))
+                  if (dispatch(retryResponse(chatId, message.id, language)))
                     onRequestStarted();
                 }}
               >
                 <Icon name="retry" />
-                Повторить
+                {locale.ui.messageItem.retry}
               </button>
             )}
             {isLast && (

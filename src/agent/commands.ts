@@ -1,3 +1,6 @@
+import en from '@/locales/en.json';
+import ru from '@/locales/ru.json';
+
 export type Command =
   | {
       kind:
@@ -11,45 +14,28 @@ export type Command =
         | 'verify_detail'
         | 'verify_method';
     }
-  | { kind: 'calculator'; left: number; right: number }
+  | {
+      kind: 'calculator';
+      operation: 'add' | 'subtract' | 'multiply' | 'divide';
+      left: number;
+      right: number;
+    }
   | { kind: 'equation' | 'newton' | 'unsupported' };
 
-const aliases: Readonly<Record<string, Command['kind']>> = {
-  'объясни проще': 'simplify',
-  проще: 'simplify',
-  попроще: 'simplify',
-  'объясни попроще': 'simplify',
-  'скажи проще': 'simplify',
-  'покажи схему': 'diagram',
-  'нарисуй схему': 'diagram',
-  'покажи иллюстрацию': 'diagram',
-  схема: 'diagram',
-  схему: 'diagram',
-  'дай схему': 'diagram',
-  'приведи пример из жизни': 'life_example',
-  'пример из жизни': 'life_example',
-  пример: 'life_example',
-  'дай пример': 'life_example',
-  'почему нужно раскрывать скобки': 'explain_brackets',
-  'почему -12 + 5 = -7': 'explain_constants',
-  'почему получилось -7': 'explain_constants',
-  'почему при переносе меняется знак': 'explain_transfer',
-  'почему поменялся знак': 'explain_transfer',
-  'почему изменился знак': 'explain_transfer',
-  'почему меняется знак': 'explain_transfer',
-  'покажи проверку подробнее': 'verify_detail',
-  'объясни, как проверить ответ': 'verify_method',
-  'объясни проверку': 'verify_method',
-  'объясни проверку решения': 'verify_method',
-  дальше: 'next',
-  продолжай: 'next',
-  'следующий шаг': 'next',
-  'помоги решить уравнение': 'equation',
-  'объясни второй закон ньютона': 'newton',
-  'расскажи о втором законе ньютона': 'newton',
-  'второй закон ньютона': 'newton',
-  '2 закон ньютона': 'newton',
-};
+const aliases: Record<string, Command['kind']> = {};
+for (const dictionary of [ru, en]) {
+  for (const [kind, phrases] of Object.entries(dictionary.agent.commands)) {
+    for (const phrase of phrases) {
+      aliases[phrase.replaceAll('−', '-').toLowerCase()] =
+        kind as Command['kind'];
+    }
+  }
+}
+
+const calculatorPrefixes = [
+  ...ru.agent.calculatorPrefixes,
+  ...en.agent.calculatorPrefixes,
+];
 
 export function normalizeCommand(prompt: string) {
   return prompt
@@ -59,6 +45,8 @@ export function normalizeCommand(prompt: string) {
     .replace(/[.,;:!?…\s]+$/gu, '');
 }
 
+// The demo intentionally uses explicit grammar instead of open-ended NLP:
+// normalize the request, match aliases and patterns, then convert it to a typed command.
 export function classifyCommand(prompt: string): Command {
   const normalized = normalizeCommand(prompt);
   const matchingText = normalized.replaceAll('−', '-');
@@ -78,22 +66,43 @@ export function classifyCommand(prompt: string): Command {
   )
     return { kind };
 
-  const calculation =
-    /^(?:сколько будет )?([-−]?\d+)\s*[×*xх]\s*([-−]?\d+)$/u.exec(normalized);
+  const calculatorPrefix = calculatorPrefixes.find((prefix) =>
+    matchingText.startsWith(prefix),
+  );
+  const calculationText = calculatorPrefix
+    ? matchingText.slice(calculatorPrefix.length).trim()
+    : matchingText;
+  const calculation = /^([-−]?\d+)\s*([+\-×*xх/÷])\s*([-−]?\d+)$/u.exec(
+    calculationText,
+  );
   if (calculation) {
     const left = Number(calculation[1]?.replace('−', '-'));
-    const right = Number(calculation[2]?.replace('−', '-'));
+    const operator = calculation[2];
+    const right = Number(calculation[3]?.replace('−', '-'));
+    const operation =
+      operator === '+'
+        ? 'add'
+        : operator === '-'
+          ? 'subtract'
+          : operator === '×' ||
+              operator === '*' ||
+              operator === 'x' ||
+              operator === 'х'
+            ? 'multiply'
+            : operator === '/' || operator === '÷'
+              ? 'divide'
+              : undefined;
     if (
-      [left, right].every(
-        (value) => Number.isInteger(value) && Math.abs(value) <= 10_000,
-      )
+      operation &&
+      [left, right].every(Number.isInteger) &&
+      !(operation === 'divide' && right === 0)
     )
-      return { kind: 'calculator', left, right };
+      return { kind: 'calculator', operation, left, right };
   }
   if (
     kind === 'equation' ||
-    /^помоги решить (?:уравнение )?3\s*\(\s*2\s*[xх]\s*-\s*4\s*\)\s*\+\s*5\s*=\s*2\s*\(\s*[xх]\s*\+\s*7\s*\),\s*но не давай ответ сразу$/u.test(
-      matchingText,
+    [ru, en].some(({ agent }) =>
+      new RegExp(agent.equationPattern, 'u').test(matchingText),
     )
   )
     return { kind: 'equation' };

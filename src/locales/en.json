@@ -1,0 +1,196 @@
+{
+  "ui": {
+    "newChatTitle": "New chat",
+    "demoBadge": "Demo",
+    "languageSwitch": "Switch to Russian",
+    "mobileMenu": "Open conversation menu",
+    "deleteDialog": {
+      "title": "Delete conversation?",
+      "beforeTitle": "The conversation",
+      "afterTitle": ", its messages, and draft will be removed from this device. This action cannot be undone.",
+      "activeNotice": "The response in this conversation will be stopped.",
+      "cancel": "Cancel",
+      "confirm": "Delete conversation"
+    },
+    "sidebar": {
+      "brandCaption": "Your learning assistant",
+      "demoInfo": "Responses are prepared in advance, so questions based on the suggested examples work best.",
+      "failureInfo": "Each scenario includes a built-in failure. Select Retry to see the complete response.",
+      "failureHeading": "Built-in failure scenarios:",
+      "calculatorFailure": "Calculator: the tool returns an error instead of a calculation result.",
+      "equationFailure": "Equation: the explanation is interrupted while moving terms.",
+      "imageFailure": "Newton's diagram: the image tool fails, so the diagram is not shown.",
+      "failurePersistence": "Failure scenarios remain recorded after a page reload. Stopping a run does not use up its demo failure.",
+      "newChat": "New chat",
+      "about": "About this demo",
+      "dialogs": "Conversations",
+      "dialogsAndHelp": "Conversations and help",
+      "expand": "Expand conversations panel",
+      "collapse": "Collapse conversations panel",
+      "closeMenu": "Close conversations menu",
+      "closeAbout": "Close help",
+      "activeReply": "Response in progress",
+      "unreadReply": "New response",
+      "replyError": "Response error",
+      "deleteChat": "Delete conversation “{title}”"
+    },
+    "composer": {
+      "placeholder": "Ask LOM AI",
+      "message": "Message",
+      "stop": "Stop response",
+      "send": "Send message",
+      "tooLong": "Message is too long. Maximum: 4,000 characters.",
+      "keyboardHint": "Enter to send · Shift+Enter for a new line",
+      "characterCount": "Character count"
+    },
+    "messageList": {
+      "history": "Conversation history",
+      "emptyHeading": "What can I help you with?",
+      "emptyDescription": "Ask a question, check a calculation, or choose an example to start.",
+      "clearDraftHint": "Clear the input before choosing an example",
+      "demoNote": "Demo: responses are prepared in advance. Questions based on the examples work best.",
+      "jumpToLatest": "Jump to latest messages"
+    },
+    "messageItem": {
+      "assistant": "LOM AI",
+      "user": "You",
+      "retry": "Retry",
+      "retryLabel": "Retry the last response"
+    },
+    "suggestedRepliesLabel": "Continue with",
+    "execution": {
+      "failedHistory": "Action history",
+      "actions": "Completed actions",
+      "noActions": "No actions completed yet",
+      "seconds": "sec",
+      "completedPrefix": "Thought for",
+      "minuteForms": ["minute", "minutes", "minutes"]
+    },
+    "copy": {
+      "copied": "Copied",
+      "copy": "Copy response",
+      "error": "Could not copy response"
+    },
+    "image": {
+      "viewerTitle": "Diagram image",
+      "downloadError": "Could not download image",
+      "closeViewer": "Close image viewer",
+      "openError": "Could not open image",
+      "download": "Download image",
+      "loadError": "Could not load image",
+      "openFull": "Open image full size",
+      "loading": "Loading image…",
+      "preparing": "Preparing image…"
+    },
+    "storage": {
+      "readError": "Saved conversations could not be restored. You can continue in a new chat, but this session will not be saved.",
+      "writeError": "Conversation history is not being saved. You can continue chatting, but new messages and drafts may be lost after reloading."
+    },
+    "prompts": [
+      {
+        "title": "Explore physics",
+        "text": "Explain Newton's second law",
+        "description": "Learn the law with a simple example"
+      },
+      {
+        "title": "Solve step by step",
+        "text": "Help me solve the equation 3(2x − 4) + 5 = 2(x + 7), but do not give me the answer right away",
+        "description": "Start with a hint, not the final answer"
+      },
+      {
+        "title": "Check a calculation",
+        "text": "What is 17 × 24?",
+        "description": "Calculate it with the calculator"
+      }
+    ]
+  },
+  "agent": {
+    "commands": {
+      "simplify": ["explain more simply", "explain it simply", "simpler", "make it simpler", "put it simply"],
+      "diagram": ["show a diagram", "draw a diagram", "show an illustration", "diagram", "show the diagram"],
+      "life_example": ["give a real-life example", "give me a real life example", "real-life example", "example from life", "give an example"],
+      "explain_brackets": ["why do we expand the brackets", "why expand the brackets"],
+      "explain_constants": ["why is -12 + 5 = -7", "why does -12 plus 5 equal -7", "why did we get -7"],
+      "explain_transfer": ["why does the sign change when moving a term", "why does the sign change", "why did the sign change"],
+      "verify_detail": ["show the check in more detail", "show the verification in detail"],
+      "verify_method": ["explain how to check the answer", "how do I check the answer", "explain the check"],
+      "next": ["next", "continue", "next step", "go on"],
+      "equation": ["help me solve the equation", "help me solve the equation 3(2x − 4) + 5 = 2(x + 7), but do not give me the answer right away"],
+      "newton": ["explain newton's second law", "explain the second law of newton", "tell me about newton's second law", "newton's second law"]
+    },
+    "calculatorPrefixes": ["how much is ", "what is ", "calculate "],
+    "equationPattern": "^help me solve (?:the )?equation 3\\s*\\(\\s*2\\s*x\\s*-\\s*4\\s*\\)\\s*\\+\\s*5\\s*=\\s*2\\s*\\(\\s*x\\s*\\+\\s*7\\s*\\),\\s*but do not give me the answer right away$",
+    "suggestions": {
+      "simplify": "Explain it more simply",
+      "diagram": "Show a diagram",
+      "lifeExample": "Give a real-life example",
+      "equationQuestions": {
+        "1": "Why do we expand the brackets?",
+        "2": "Why is −12 + 5 = −7?",
+        "3": "Why does the sign change when moving a term?"
+      },
+      "next": "Next",
+      "verifyDetail": "Show the check in more detail",
+      "verifyMethod": "Explain how to check the answer"
+    },
+    "fallback": {
+      "introduction": "I am running in demo mode and can only respond to prepared commands so far.",
+      "newton": "We are discussing Newton's second law. You can ask for a simpler explanation, a diagram, or a real-life example.",
+      "equationSubjects": ["expanding the brackets", "adding −12 and 5", "moving terms"],
+      "equationContinue": "We are working on {subject}. Choose “Next” to continue.",
+      "equationFinished": "We can take a closer look at checking the answer.",
+      "examplesIntro": "Try one of these questions:",
+      "examples": ["Explain Newton's second law", "Help me solve an equation", "What is 20 − 20?", "What is 17 × 24?"]
+    },
+    "newton": {
+      "answer": "**Newton's second law** relates the net force acting on an object to its mass and acceleration: **F = m · a**, or **a = F / m**.\n\nF is the net force in newtons, m is mass in kilograms, and a is acceleration in m/s². Acceleration points in the direction of the net force.\n\nFor the same mass, a greater force produces greater acceleration. For the same force, a more massive object accelerates less. For example, a 6 N force gives a 2 kg object an acceleration of 3 m/s².\n\nYou can ask for a simpler explanation, a diagram, or a real-life example in any order.",
+      "simplified": "Imagine an empty cart and a heavy car. If you push both with the same force, the cart speeds up more because it has less mass.\n\nNow push the same cart harder: its speed changes faster. That change is acceleration. Newton's second law says: **more force means more acceleration; more mass means less acceleration for the same force**.",
+      "lifeExample": "A soccer ball being kicked is a real-life example. While the foot is in contact with the ball, it applies a force and changes the ball's velocity. For the same ball, a greater net force produces greater acceleration.\n\nIf the same force is applied to a heavier ball, its acceleration is smaller. The law relates force to a **change in velocity**, not to velocity itself. After the kick, the ball's motion depends on the forces that continue to act on it.",
+      "imageAlt": "Newton's second law: force and acceleration point in the same direction; a = F / m. For the same mass, doubling the force doubles the acceleration. For the same force, doubling the mass halves the acceleration."
+    },
+    "equation": {
+      "expression": "3(2x − 4) + 5 = 2(x + 7)",
+      "check": "Substitute x = 5.25 into the original equation.\n\nLeft side: 3 · (2 · 5.25 − 4) + 5 = 3 · 6.5 + 5 = 19.5 + 5 = **24.5**.\n\nRight side: 2 · (5.25 + 7) = 2 · 12.25 = **24.5**.\n\nBoth sides are equal, so the answer is correct.",
+      "checkDetail": "Substitute `x = 5.25` for every x and work through each side separately.\n\n**Left side:**\n\n1. Multiply inside the brackets first: `2 · 5.25 = 10.5`.\n2. Subtract: `10.5 − 4 = 6.5`.\n3. Multiply the bracket result by 3: `3 · 6.5 = 19.5`.\n4. Add the remaining number: `19.5 + 5 = 24.5`.\n\n**Right side:**\n\n1. Add inside the brackets: `5.25 + 7 = 12.25`.\n2. Multiply the result by 2: `2 · 12.25 = 24.5`.\n\nBoth sides are equal, so `5.25` is a solution.",
+      "steps": {
+        "1": {
+          "answer": "Let's solve **{equation}** step by step.\n\n**Step 1. Expand the brackets.** Multiply the number outside each bracket by every term inside it:\n\n3 · 2x − 3 · 4 + 5 = 2 · x + 2 · 7\n\nThis gives **6x − 12 + 5 = 2x + 14**. This uses the distributive property of multiplication.",
+          "detail": "Expanding brackets uses the distributive property: multiply the factor outside the brackets by every term inside them. This rewrites the same expression without brackets.\n\nFor example, `3(2x − 4)` becomes `3 · 2x − 3 · 4`, or `6x − 12`.\n\nDo the same on the right: `2(x + 7) = 2x + 14`"
+        },
+        "2": {
+          "answer": "**Step 2. Combine like terms.**\n\nOn the left, add the constants: −12 + 5 = −7. Leave the terms with x as they are for now.\n\nThis gives **6x − 7 = 2x + 14**.",
+          "detail": "Imagine a number line. Start at −12 and add 5 by moving five spaces to the right: −11, −10, −9, −8, −7.\n\nSo `−12 + 5 = −7`."
+        },
+        "3": {
+          "answer": "**Step 3. Move the x terms to the left and the numbers to the right.**\n\nSubtract 2x from both sides: 4x − 7 = 14. Then add 7 to both sides.\n\nThis gives **4x = 21**. We did the same operation on both sides, so the equality is preserved.",
+          "detail": "“Move it and change its sign” is shorthand for doing the same operation to both sides of an equation.\n\nTo remove −7 on the left, add 7 to both sides. On the left, `−7 + 7 = 0`; on the right, we get `+7`.\n\nTo remove `2x` on the right, subtract `2x` from both sides. It cancels on the right and becomes `−2x` on the left. The sign change comes from adding or subtracting the same value on both sides."
+        },
+        "4": {
+          "answer": "**Step 4. Solve for the unknown.**\n\nDivide both sides of 4x = 21 by 4: **x = 21/4 = 5.25**.\n\n{check}\n\nThe equation is solved."
+        }
+      },
+      "nextWithoutEquation": "Which problem would you like to continue? Type “Help me solve an equation” to start the step-by-step solution.",
+      "solved": "The equation is solved: x = 21/4 = 5.25. You can ask about checking the answer or choose another topic.",
+      "verifyMethod": "To check a solution, substitute it for every x in the original equation. Calculate the left and right sides separately, following the order of operations: brackets, multiplication, then addition.\n\nAt x = 5.25, both sides equal 24.5, so the value is a solution. An intermediate equality alone does not replace checking the original equation."
+    },
+    "calculatorSuffix": "I checked the calculation with the calculator."
+  },
+  "status": {
+    "actionLabels": {
+      "analyzed": "Analyzed the request",
+      "calculated": "Calculated with the calculator",
+      "image_prepared": "Used the image tool",
+      "answer_composed": "Prepared the response"
+    },
+    "queued": "Message sent",
+    "streaming": "Writing a response…",
+    "cancelled": "Response stopped",
+    "interrupted": "Response interrupted after page reload",
+    "failedTimeout": "The response took too long. Please try again.",
+    "failed": "The response could not be completed. Please try again.",
+    "analyzing": "Thinking about your question…",
+    "composing": "Preparing a response…",
+    "preparingImage": "Preparing image…",
+    "usingCalculator": "Using the calculator…"
+  }
+}

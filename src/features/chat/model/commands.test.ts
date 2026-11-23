@@ -111,17 +111,25 @@ it('rejects a spent or unavailable suggestion before invoking the executor while
   ]) {
     expect(
       store.dispatch(
-        sendMessage(chat.id, { text, afterMessageId: explanation[1].id }),
+        sendMessage(chat.id, { text, afterMessageId: explanation[1].id }, 'ru'),
       ),
     ).toBe(false);
   }
   expect(requestExecutor.send).not.toHaveBeenCalled();
   expect(store.getState()).toBe(before);
   const next = { text: 'Дальше', afterMessageId: explanation[1].id };
-  expect(store.dispatch(sendMessage(chat.id, next))).toBe(true);
-  expect(requestExecutor.send).toHaveBeenCalledExactlyOnceWith(chat.id, next);
-  expect(store.dispatch(sendMessage(chat.id))).toBe(true);
-  expect(requestExecutor.send).toHaveBeenLastCalledWith(chat.id, undefined);
+  expect(store.dispatch(sendMessage(chat.id, next, 'ru'))).toBe(true);
+  expect(requestExecutor.send).toHaveBeenCalledExactlyOnceWith(
+    chat.id,
+    next,
+    'ru',
+  );
+  expect(store.dispatch(sendMessage(chat.id, undefined, 'ru'))).toBe(true);
+  expect(requestExecutor.send).toHaveBeenLastCalledWith(
+    chat.id,
+    undefined,
+    'ru',
+  );
 });
 
 it.each(['constructor', 'toString', '__proto__', 'missing'])(
@@ -131,7 +139,7 @@ it.each(['constructor', 'toString', '__proto__', 'missing'])(
     const before = store.getState();
     expect(
       store.dispatch(
-        sendMessage(chatId, { text: 'Дальше', afterMessageId: 'assistant-1' }),
+        sendMessage(chatId, { text: 'Дальше', afterMessageId: 'assistant-1' }, 'ru'),
       ),
     ).toBe(false);
     expect(requestExecutor.send).not.toHaveBeenCalled();

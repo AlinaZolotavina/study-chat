@@ -12,6 +12,7 @@ import {
   imageToolResult,
 } from '@/test/fixtures';
 import { chatActions, chatsReducer } from './chatsSlice';
+import { NEWTON_IMAGE_SRC_RU } from '@/agent/config';
 import {
   buildAgentHistory,
   createEmptyChat,
@@ -98,7 +99,7 @@ it.each<{ reason: string; changes: Partial<AssistantMessage> }>([
   },
   {
     reason: 'response already contains an image',
-    changes: { imageSrc: 'assets/newtons-2nd-law-of-motion.png' },
+    changes: { imageSrc: NEWTON_IMAGE_SRC_RU },
   },
   {
     reason: 'response already has image metadata',
@@ -323,16 +324,16 @@ describe('event state machine', () => {
         type: 'tool_call',
         callId: 'call',
         tool: 'calculator',
-        input: { operation: 'multiply', left: 17, right: 24 },
+        input: { operation: 'add', left: 100_000, right: 200_000 },
       },
       {
         type: 'tool_result',
         callId: 'call',
         tool: 'calculator',
-        output: { value: 408 },
+        output: { value: 300_000 },
       },
-      { type: 'text_delta', text: '40' },
-      { type: 'text_delta', text: '8' },
+      { type: 'text_delta', text: '300' },
+      { type: 'text_delta', text: '000' },
       { type: 'completed' },
     ];
     for (const event of events)
@@ -340,8 +341,32 @@ describe('event state machine', () => {
         state,
         chatActions.agentEventReceived(eventFor(pendingMeta, event)),
       );
-    expect(lastAssistant(state.byId['chat-a']).text).toBe('408');
+    expect(lastAssistant(state.byId['chat-a']).text).toBe('300000');
     expect(lastAssistant(state.byId['chat-a']).run.status).toBe('completed');
+  });
+
+  it('rejects a calculator division-by-zero tool call', () => {
+    let state = chatsReducer(
+      pendingState(),
+      chatActions.agentEventReceived(
+        eventFor(pendingMeta, { type: 'started' }),
+      ),
+    );
+    state = chatsReducer(
+      state,
+      chatActions.agentEventReceived(
+        eventFor(pendingMeta, {
+          type: 'tool_call',
+          callId: 'call',
+          tool: 'calculator',
+          input: { operation: 'divide', left: 10, right: 0 },
+        }),
+      ),
+    );
+    expect(lastAssistant(state.byId['chat-a']).run).toMatchObject({
+      status: 'failed',
+      error: { code: 'protocol_error' },
+    });
     expect(
       chatsReducer(
         state,
@@ -371,7 +396,7 @@ describe('event state machine', () => {
       );
     expect(lastAssistant(state.byId['chat-a'])).toMatchObject({
       text: 'partial',
-      imageSrc: 'assets/newtons-2nd-law-of-motion.png',
+      imageSrc: NEWTON_IMAGE_SRC_RU,
       run: {
         status: 'failed',
         error: { code: 'demo_partial_failure', retryable: true },
@@ -431,7 +456,7 @@ describe('event state machine', () => {
     const message = lastAssistant(state.byId['chat-a']);
     expect(message).toMatchObject({
       text: '',
-      imageSrc: 'assets/newtons-2nd-law-of-motion.png',
+      imageSrc: NEWTON_IMAGE_SRC_RU,
       run: { status: 'completed', finishedAt: TEST_TIME },
     });
     expect(message.run.actions.map((action) => action.kind)).toEqual([

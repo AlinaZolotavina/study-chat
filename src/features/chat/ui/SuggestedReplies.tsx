@@ -2,6 +2,7 @@ import { useId } from 'react';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { sendMessage } from '../model/commands';
 import { selectChatSuggestions } from '../model/selectors';
+import { useLocale } from '@/app/useLocale';
 import styles from './ChatWorkspace.module.css';
 
 export function SuggestedReplies({
@@ -14,8 +15,9 @@ export function SuggestedReplies({
   onRequestStarted: () => void;
 }) {
   const dispatch = useAppDispatch();
+  const { language, locale } = useLocale();
   const suggestions = useAppSelector((state) =>
-    selectChatSuggestions(state, chatId),
+    selectChatSuggestions(state, chatId, language),
   );
   const labelId = useId();
   if (suggestions.length === 0) return null;
@@ -25,7 +27,7 @@ export function SuggestedReplies({
       role="group"
       aria-labelledby={labelId}
     >
-      <p id={labelId}>Можешь продолжить</p>
+      <p id={labelId}>{locale.ui.suggestedRepliesLabel}</p>
       {suggestions.map((text) => (
         <button
           key={text}
@@ -33,7 +35,9 @@ export function SuggestedReplies({
           className={`${styles.userBubble} ${styles.suggestedReply}`}
           onClick={() => {
             if (
-              dispatch(sendMessage(chatId, { text, afterMessageId: messageId }))
+              dispatch(
+                sendMessage(chatId, { text, afterMessageId: messageId }, language),
+              )
             )
               onRequestStarted();
           }}

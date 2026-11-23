@@ -115,7 +115,7 @@
   justify-content: center;
   gap: 8px;
   padding: 10px 14px;
-  border: 1px solid var(--color-control-border);
+  border: 1px solid transparent;
   border-radius: 8px;
   background: var(--color-surface);
   color: var(--color-text);
@@ -551,6 +551,86 @@
   color: var(--color-focus);
   font-size: 14px;
   font-weight: 500;
+}
+.headerActions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+.languagePicker {
+  position: relative;
+}
+.languageButton {
+  display: inline-flex;
+  min-width: 48px;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.languageButton svg:first-child {
+  width: 18px;
+  height: 18px;
+}
+.languageChevron {
+  width: 14px;
+  height: 14px;
+}
+.languageButton:hover {
+  color: var(--color-accent);
+}
+.languageButton:focus-visible {
+  border-color: var(--color-focus);
+  outline: none;
+}
+.languageMenu {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 64px;
+  overflow: hidden;
+  padding: 2px 0;
+  border: 1px solid var(--color-control-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 14%);
+}
+.languageMenu button {
+  display: flex;
+  width: 100%;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.languageMenu button:hover {
+  background: var(--color-sidebar);
+}
+.languageCheck {
+  width: 16px;
+  height: 16px;
+  color: var(--color-accent);
+}
+.languageMenu button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
 }
 .storageNotice {
   display: flex;
@@ -1522,6 +1602,16 @@
     padding: 4px 6px;
     border-radius: 10px;
     font-size: 11px;
+  }
+  .headerActions {
+    gap: 4px;
+  }
+  .languageButton {
+    min-width: 40px;
+    min-height: 36px;
+    padding: 4px 7px;
+    border-radius: 10px;
+    font-size: 12px;
   }
   .conversation {
     padding: 16px 12px;

@@ -11,6 +11,7 @@ if (!rootElement) {
   throw new Error('Не найден корневой элемент приложения.');
 }
 
+// The store restores chats before the first render and starts persistence.
 const store = createAppStore({ storage: () => window.localStorage });
 
 import.meta.hot?.dispose(() => {

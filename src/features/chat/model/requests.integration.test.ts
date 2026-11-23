@@ -201,7 +201,7 @@ it('INT-04: retries with a fresh run, empty result and protection from the old r
   const chatId = store.getState().chats.selectedChatId;
   for (const draft of ['Помоги решить уравнение', 'Дальше', 'Дальше']) {
     store.dispatch(chatActions.draftChanged({ chatId, draft }));
-    expect(store.dispatch(sendMessage(chatId))).toBe(true);
+    expect(store.dispatch(sendMessage(chatId, undefined, 'ru'))).toBe(true);
     await vi.runAllTimersAsync();
   }
   const failed = lastAssistant(store.getState().chats.byId[chatId]);
@@ -214,11 +214,11 @@ it('INT-04: retries with a fresh run, empty result and protection from the old r
   expect(store.getState().chats.byId[chatId]?.demonstratedFailures).toEqual([
     'equation',
   ]);
-  expect(selectChatSuggestions(store.getState(), chatId)).toEqual([]);
+  expect(selectChatSuggestions(store.getState(), chatId, 'ru')).toEqual([]);
   store.dispatch(chatActions.draftChanged({ chatId, draft: 'keep draft' }));
   const messageId = failed.id;
-  expect(store.dispatch(retryResponse(chatId, messageId))).toBe(true);
-  expect(store.dispatch(retryResponse(chatId, messageId))).toBe(false);
+  expect(store.dispatch(retryResponse(chatId, messageId, 'ru'))).toBe(true);
+  expect(store.dispatch(retryResponse(chatId, messageId, 'ru'))).toBe(false);
   const retry = lastAssistant(store.getState().chats.byId[chatId]);
   expect(retry.run.id).not.toBe(failed.run.id);
   expect(retry).toMatchObject({
@@ -241,7 +241,7 @@ it('INT-04: retries with a fresh run, empty result and protection from the old r
   const completed = lastAssistant(store.getState().chats.byId[chatId]);
   expect(completed.run.status).toBe('completed');
   expect(completed.text).toBe(EQUATION_STEPS[3].answer);
-  expect(selectChatSuggestions(store.getState(), chatId)).toEqual([
+  expect(selectChatSuggestions(store.getState(), chatId, 'ru')).toEqual([
     'Дальше',
     'Почему при переносе меняется знак?',
   ]);

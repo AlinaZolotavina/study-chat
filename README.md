@@ -1,130 +1,149 @@
 # LOM AI
 
-## О проекте
+English | [Русский](README.ru.md)
 
-LOM AI — демонстрационный веб-клиент образовательного AI-агента. Он помогает разбирать учебные вопросы, продолжать диалог и получать результаты работы инструментов. Агент полностью имитируется локально, без backend и внешних AI API.
+## About
 
-Демо: https://alinazolotavina.github.io/study-chat/
+LOM AI is a demo web client for an educational AI agent. It helps students explore learning topics, continue a conversation, and see tool results. The agent is fully simulated in the browser with no backend or external AI APIs.
 
-## Возможности
+Live demo: https://alinazolotavina.github.io/study-chat/
 
-- Независимые диалоги с черновиками и отметками непрочитанных ответов.
-- Пошаговые учебные объяснения и подсказки продолжения.
-- Постепенное появление ответа, статусы и история действий.
-- Остановка ответа и повторная попытка после сбоя.
-- Markdown, копирование ответов, просмотр и скачивание PNG.
-- Адаптивный интерфейс для desktop, tablet и mobile.
+## Features
 
-## Демо-сценарии
+- Independent conversations with drafts and unread reply markers.
+- Step-by-step learning explanations and follow-up suggestions.
+- Streaming responses, progress statuses, and an execution history.
+- Stop a response and retry after a failure.
+- Markdown rendering, response copying, and PNG viewing and downloading.
+- Responsive desktop, tablet, and mobile layouts.
 
-Каждый сценарий удобно проверять в новом чате:
+## Demo scenarios
 
-| Запрос                         | Что попробовать                                                             | Встроенная ошибка                                                                                                                                     |
-| ------------------------------ | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| «Объясни второй закон Ньютона» | Упрощение, схема и пример из жизни в любом порядке                          | Первый запрос «Покажи схему» завершается ошибкой подготовки изображения; Retry возвращает схему.                                                      |
-| «Помоги решить уравнение»      | Решение 3(2x − 4) + 5 = 2(x + 7): «Дальше» и уточнения по текущему действию | Получив 6x − 7 = 2x + 14, нажмите «Дальше»: объяснение переноса слагаемых начнётся и оборвётся; Retry вернёт полное объяснение с результатом 4x = 21. |
-| «Сколько будет 17 × 24?»       | Вызов калькулятора и получение результата «408» после Retry                 | Первое вычисление завершается ошибкой калькулятора; Retry возвращает результат «408».                                                                 |
+Start each scenario in a new chat. The prompts below are in Russian because that is the language supported by the demo.
 
-Каждая встроенная ошибка показывается один раз на чат. Перезагрузка страницы не сбрасывает отметку об уже показанной ошибке. Если нажать Stop до появления ошибки, она остаётся для следующей попытки.
+| Prompt | Try | Built-in failure |
+| --- | --- | --- |
+| «Объясни второй закон Ньютона» (Explain Newton's second law) | Ask for a simpler explanation, a diagram, or a real-life example in any order. | The first «Покажи схему» (Show a diagram) request fails while preparing the image. Retry returns the diagram. |
+| «Помоги решить уравнение» (Help me solve an equation) | Solve `3(2x − 4) + 5 = 2(x + 7)` step by step with «Дальше» (Next) and questions about the current step. | After `6x − 7 = 2x + 14`, choose «Дальше»: the explanation of moving terms starts and is interrupted. Retry returns the complete explanation and `4x = 21`. |
+| «Сколько будет 17 × 24?» (What is 17 × 24?) | Call the calculator and get `408` after Retry. | The first calculation fails in the calculator tool. Retry returns `408`. |
 
-## Запуск проекта
+The calculator accepts integer expressions without an app-defined size limit, using addition (`+`), subtraction (`-`), multiplication (`×`, `*`, `x`), or division (`/`, `÷`). Very large numbers are limited by JavaScript's `Number` precision. Division by zero is not supported.
 
-Node.js 22.23.2 (`.nvmrc`), npm 10.9.8.
+Each built-in failure is shown once per chat. Reloading the page does not reset whether a failure has already been shown. If Stop is pressed before the failure appears, the failure remains available for the next attempt.
+
+## Run locally
+
+Requirements: Node.js 22.23.2 (see `.nvmrc`) and npm 10.9.8.
 
 ```sh
 npm ci
 npm run dev
 ```
 
-Приложение: http://127.0.0.1:5173/. Если порт занят, актуальный адрес покажет Vite.
+Open http://127.0.0.1:5173/. If the port is busy, Vite prints the actual address.
 
-| Команда              | Назначение                                           |
-| -------------------- | ---------------------------------------------------- |
-| `npm run dev`        | Разработка                                           |
-| `npm run check`      | TypeScript, ESLint, Prettier и Vitest                |
-| `npm run test:e2e`   | Один E2E в Google Chrome на production-сборке        |
-| `npm run check:all`  | Все проверки, включая сборку и E2E                   |
-| `npm run build`      | Production-сборка в `dist`                           |
-| `npm run preview`    | Просмотр сборки на http://127.0.0.1:4173/study-chat/ |
-| `npm run test:watch` | Vitest в watch-режиме                                |
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the development server. |
+| `npm run check` | Run TypeScript, ESLint, Prettier, and Vitest checks. |
+| `npm run test:e2e` | Run the Playwright E2E in Google Chrome against a production build. |
+| `npm run check:all` | Run all checks, including the E2E suite. |
+| `npm run build` | Create a production build in `dist`. |
+| `npm run preview` | Preview the build at http://127.0.0.1:4173/study-chat/. |
+| `npm run test:watch` | Run Vitest in watch mode. |
 
-Для просмотра сборки сначала выполните `npm run build`, затем `npm run preview`.
+Run `npm run build` before `npm run preview`.
 
-## Конфигурация
+## Configuration
 
-`.env` и API-ключи не требуются. Основные настройки:
+No `.env` file or API keys are required. Main configuration files:
 
-- [src/agent/config.ts](src/agent/config.ts) — задержки mock-агента и параметры streaming.
-- [vite.config.ts](vite.config.ts) — порты, настройки Vitest и базовый путь: `/` для разработки, `/study-chat/` для production-сборки и preview.
-- [playwright.config.ts](playwright.config.ts) — браузер, таймауты и адрес тестового сервера E2E.
+- [src/agent/config.ts](src/agent/config.ts) — mock-agent delays and streaming settings.
+- [vite.config.ts](vite.config.ts) — ports, Vitest settings, and base paths: `/` in development and `/study-chat/` for production builds and preview.
+- [playwright.config.ts](playwright.config.ts) — browser, timeouts, and the E2E test server.
 
-## Технологический стек
+## Tech stack
 
-React 19, TypeScript 6, Vite 8, Redux Toolkit, CSS Modules, react-markdown, Vitest и Playwright. Точные версии закреплены в `package.json` и `package-lock.json`.
+React 19, TypeScript 6, Vite 8, Redux Toolkit, CSS Modules, react-markdown, Vitest, and Playwright. Exact versions are pinned in `package.json` and `package-lock.json`.
 
-## Архитектура и структура проекта
+## Architecture and project structure
 
 ```text
 src/
-├── app/                  # Инициализация, store и провайдеры
+├── main.tsx              # Application entry point
+├── app/                  # App component, Redux store, and typed hooks
 ├── features/chat/
-│   ├── model/            # Redux, selectors, команды и requestExecutor
-│   └── ui/               # Компоненты чата и локальные UI-состояния
-├── agent/                # Контракт событий, контекст и mock-сценарии
-│   └── tools/            # Калькулятор и генератор изображения
-├── storage/              # Валидация, сохранение и восстановление
-├── shared/               # Общие компоненты и функции
-└── test/                 # Тестовые утилиты
-e2e/                      # Постоянный Playwright E2E
-public/assets/            # Предоставленная схема Ньютона
+│   ├── model/            # Redux state, selectors, commands, and requestExecutor
+│   └── ui/               # Chat components and local UI state
+├── agent/                # Event contract, context, and mock scenarios
+│   └── tools/            # Calculator and demo image tool
+├── storage/              # Validation, persistence, and restoration
+├── shared/               # Shared components and utilities
+└── test/                 # Test utilities
+e2e/                      # Playwright E2E
+public/assets/            # Supplied Newton diagram
 ```
 
-## Ключевые архитектурные решения
+Key architectural choices:
 
-- Предметные данные хранятся в Redux, временное UI-состояние — в React.
-- Асинхронные операции сосредоточены в отдельном requestExecutor, reducers изменяют состояние синхронно.
-- Mock-agent и инструменты не зависят от UI и Redux.
+- Domain data lives in Redux; temporary UI state stays in React.
+- Async work is handled by a separate requestExecutor; reducers update state synchronously.
+- The mock agent and tools do not depend on the UI or Redux.
 
-Компоненты, диаграммы и обоснования решений — в [Architecture.md](docs/Architecture.md); функциональные требования и критерии качества — в [Requirements.md](docs/Requirements.md).
+See [Architecture](docs/Architecture.md) for architecture diagrams and rationale, and [Requirements](docs/Requirements.md) for functional requirements and quality criteria.
 
-## Streaming и события mock-agent
+## Mock-agent events and streaming
 
-- **Команды:** явный список после нормализации; тема и шаг определяются по успешной истории своего чата. Fallback сохраняет прогресс.
-- **События:** `AsyncIterable` передаёт начало, фазы, вызовы/результаты инструментов, текстовые фрагменты и завершение либо ошибку.
-- **Streaming:** небольшие Unicode-фрагменты с сохранением Markdown; скорость зависит от содержимого, между блоками — паузы.
-- **Stop / Retry / ошибки:** отмена сохраняет полученную часть ответа; Retry очищает результат и создаёт новый `runId`, сохраняя исходные сообщения. Ошибки завершают попытку с освобождением ресурсов.
+- **Commands:** an explicit grammar runs after normalization; the topic and step are derived from successful history in that chat. Fallback responses preserve progress.
+- **Events:** an `AsyncIterable` reports startup, phases, tool calls and results, text fragments, and completion or failure.
+- **Streaming:** short Unicode fragments preserve Markdown meaning; speed depends on the content, with pauses between blocks.
+- **Stop, Retry, and errors:** cancellation keeps the partial response; Retry clears the attempt and starts a new `runId` while preserving the original messages. Errors end an attempt and release its runtime resources.
 
-## Локальное хранение
+## Local persistence
 
-Один JSON в `lom-ai:chat`: чаты, сообщения, черновики, частичные результаты и пути к PNG. Запись — с debounce 400 мс, важные изменения — сразу. При отказе чтения/записи приложение работает в памяти; повреждённый JSON не перезаписывается.
+Chats are stored as one JSON value under `lom-ai:chat`, including messages, drafts, partial responses, and PNG paths. Writes are debounced by 400 ms, while important changes are saved immediately. If reading or writing fails, the app continues in memory; malformed JSON is not overwritten.
 
-После перезагрузки незавершённые ответы получают статус `interrupted` без автоматического продолжения.
+After reload, unfinished responses are marked `interrupted` and are not resumed automatically.
 
-## Проверки и тестирование
+## Checks and testing
 
-- `npm run check:all` пройден: TypeScript, ESLint, Prettier, production build, 446 unit + 4 integration + 1 Playwright E2E.
-- Integration проверяют store/thunk/executor; E2E — один браузерный сценарий с восстановлением после reload.
-- Для E2E нужен установленный Google Chrome; production-preview на порту 4174 запускается автоматически.
-- Каталог ручных проверок: [37 сценариев](docs/Requirements.md#каталог-ручных-сценариев). Среда приёмки — Chrome/DevTools; другие браузеры и физические мобильные устройства не проверялись.
+- `npm run check:all` runs TypeScript, ESLint, Prettier, 459 Vitest tests (including four integration scenarios), and one Playwright E2E. Run `npm run build` separately to verify the production build.
+- Integration tests cover the store, thunks, and executor; the E2E covers one browser flow, including restoration after reload.
+- Google Chrome must be installed for E2E. A production preview server starts automatically on port 4174.
+- The [37 manual scenarios](docs/Requirements.md#manual-scenario-catalog) are listed in the requirements document. Acceptance checks were performed in Chrome/DevTools; other browsers and physical mobile devices were not verified.
 
-Покрытие каждого функционального требования и требования к качеству существующими тестами — в [Requirements.md](docs/Requirements.md).
+See [Requirements](docs/Requirements.md) for coverage of each functional and quality requirement.
 
-## Известные ограничения
+## Known limitations
 
-- Произвольные учебные задачи не поддерживаются.
-- Нет синхронизации между вкладками.
+- Arbitrary learning questions are not supported.
+- Conversations are not synchronized across tabs.
 
-## Использование AI-инструментов
+## Use of AI tools
 
-При разработке использовался Codex. Два примера, когда я скорректировала предложенную AI-реализацию:
+Codex was used during development. Here are two examples where I revised an AI-suggested implementation:
 
-- **Ответственность команды и reducer.** При отправке вопроса приложение добавляет два сообщения: вопрос пользователя и пустую заготовку ответа AI. В предложенной реализации reducer сохранял их без достаточных проверок: ошибочное действие могло связать ответ с другим вопросом или добавить ответ с уже заполненным текстом. Я оставила создание сообщений команде отправки, а reducer поручила проверять их связь, разные ID и пустое начальное состояние ответа. Если проверка не пройдена, оба сообщения отклоняются без изменения истории чата.
-- **Единая политика доступа к чатам.** Чаты хранятся в JavaScript-объекте по ID. В AI-реализации наличие любого значения по такому ключу считалось признаком существующего чата. Но, например, ключ `constructor` возвращает унаследованную функцию даже в пустом объекте; попытка прочитать у неё сообщения могла вызвать ошибку. Я выбрала общий helper `getChatById` с `Object.hasOwn` для всех обращений к чатам: он проверяет наличие собственной записи с указанным ID. Теперь отсутствующий чат корректно отклоняется, а реально созданный чат с таким ID остаётся доступен.
+- **Separating command and reducer responsibilities.** Sending a question adds two messages: the user's question and an empty assistant response. The suggested reducer accepted them without enough validation, so a malformed action could connect a response to the wrong question or add a response that already contained text. I kept message creation in the send command and made the reducer validate the relationship, distinct IDs, and the response's empty initial state. If validation fails, neither message is added.
+- **Using one policy to look up chats.** Chats are stored in a JavaScript object keyed by ID. The suggested implementation treated any value at a key as an existing chat. For example, `constructor` can resolve to an inherited function even when the object has no such chat, and reading its messages could throw. I added a shared `getChatById` helper using `Object.hasOwn` and used it for chat lookups. A missing chat is now rejected, while a chat created with that ID remains accessible.
 
-Оба исправления закреплены регрессионными тестами.
+Both fixes are covered by regression tests.
 
-## Что можно улучшить
+## Possible next steps
 
-- Расширить браузерную и accessibility-проверку, включая реальные мобильные устройства.
-- Добавить E2E для критических сценариев нескольких чатов, Stop и восстановления после ошибок.
-- При подключении реального агента реализовать отдельный transport-адаптер, сохранив существующий событийный контракт.
+- Expand browser and accessibility checks, including tests on physical mobile devices.
+- Add E2E coverage for multiple chats, Stop, and recovery from errors.
+
+There is currently one Playwright E2E: E2E-01 in [learning-chat.spec.ts](e2e/learning-chat.spec.ts). It exercises the Newton's second law conversation and verifies that users can:
+
+- Send a question and receive relevant suggestions.
+- Keep a draft while sending a suggested reply.
+- See the demo image-tool failure, retry, and receive the diagram.
+- Observe the image animation stages and execution history.
+- Choose «Объясни проще» (Explain it more simply) and continue the conversation.
+- Reload the page and restore the conversation, draft, and completed image without replaying the animation.
+
+The test also checks saved data in `localStorage` and confirms that the page reports no errors. It runs in Chrome against a production build served by Vite preview.
+
+The Stop button is only checked for visibility while a response is running; the E2E does not click it. There are no separate E2E tests for arithmetic, the equation flow, or creating and deleting chats.
+
+- When connecting a real agent, add a transport adapter while keeping the existing event contract.

@@ -15,6 +15,8 @@ const isId = (value: unknown): value is string =>
 const isTimestamp = (value: unknown): value is string =>
   typeof value === 'string' && Number.isFinite(Date.parse(value));
 
+// TypeScript types cannot protect against stale or corrupted JSON in localStorage.
+// These checks narrow unknown to ChatsState before data enters Redux.
 function isCompletedAction(value: unknown): value is CompletedAgentAction {
   return (
     isRecord(value) &&

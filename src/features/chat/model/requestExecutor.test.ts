@@ -14,6 +14,7 @@ import {
 import { chatActions, chatsReducer } from './chatsSlice';
 import { createEmptyChat, createInitialChatsState } from './helpers';
 import { createRequestExecutor, type RequestExecutor } from './requestExecutor';
+import { NEWTON_IMAGE_SRC_RU } from '@/agent/config';
 import type { ChatsState, Run } from './types';
 
 const executors: RequestExecutor[] = [];
@@ -40,6 +41,16 @@ afterEach(async () => {
   await Promise.all(executors.splice(0).map((executor) => executor.dispose()));
   vi.useRealTimers();
 });
+
+it.each(['en', 'ru'] as const)(
+  'passes the selected %s language to the agent request',
+  (language) => {
+    const control = createControlledAgent();
+    const context = setup(control.agent);
+    expect(context.executor.send('a', undefined, language)).toBe(true);
+    expect(control.call(0).request.language).toBe(language);
+  },
+);
 
 it('snapshots consumed failures per run and passes the accepted failure to Retry without duplicating the question', async () => {
   const control = createControlledAgent();
@@ -347,7 +358,7 @@ it('keeps partial text, image and draft at timeout and ignores late output', asy
   await vi.advanceTimersByTimeAsync(1);
   expect(lastAssistant(context.state().byId.a)).toMatchObject({
     text: 'partial',
-    imageSrc: 'assets/newtons-2nd-law-of-motion.png',
+    imageSrc: NEWTON_IMAGE_SRC_RU,
     run: { status: 'failed', error: { code: 'timeout', retryable: true } },
   });
   expect(context.state().byId.a?.draft).toBe('keep draft');

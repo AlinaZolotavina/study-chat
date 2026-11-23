@@ -6,7 +6,6 @@ import {
   useSyncExternalStore,
   type CSSProperties,
 } from 'react';
-import { NEWTON_IMAGE_ALT } from '@/agent/tools/generateImage';
 import type { Run } from '../model/types';
 import { localImageUrl } from './contentPolicy';
 import { imageAnimationReducer, initialImageAnimation } from './imageAnimation';
@@ -14,6 +13,7 @@ import { Icon } from '@/shared/Icon';
 import { ImageViewer } from './ImageViewer';
 import { useImageDownload } from './useImageDownload';
 import styles from './ChatWorkspace.module.css';
+import { useLocale } from '@/app/useLocale';
 
 const MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 const getReducedMotion = () => window.matchMedia(MOTION_QUERY).matches;
@@ -39,6 +39,7 @@ export function MessageImage({
   imageAlt: string | undefined;
   run: Run;
 }) {
+  const { locale } = useLocale();
   const preparing =
     run.status === 'processing' &&
     run.phase.kind === 'using_tool' &&
@@ -93,7 +94,7 @@ export function MessageImage({
       >
         {error ? (
           <p role="status" className={styles.imageError}>
-            Не удалось загрузить изображение
+            {locale.ui.image.loadError}
           </p>
         ) : (
           <>
@@ -102,8 +103,8 @@ export function MessageImage({
                 ref={opener}
                 type="button"
                 className={styles.imageOpenButton}
-                aria-label="Открыть изображение в полном размере"
-                title="Открыть изображение в полном размере"
+                aria-label={locale.ui.image.openFull}
+                title={locale.ui.image.openFull}
                 disabled={!ready}
                 onClick={() => setViewerOpen(true)}
               >
@@ -111,7 +112,7 @@ export function MessageImage({
                   src={src}
                   width={1672}
                   height={941}
-                  alt={imageAlt ?? NEWTON_IMAGE_ALT}
+                  alt={imageAlt ?? locale.agent.newton.imageAlt}
                   loading="lazy"
                   className={`${!ready && animation.phase !== 'revealing' ? styles.imageLoading : ''} ${animation.phase === 'revealing' ? styles.imageReveal : ''}`}
                   onLoad={() => dispatch({ type: 'loaded' })}
@@ -133,8 +134,8 @@ export function MessageImage({
                 role="status"
               >
                 {imageSrc && !animation.loaded
-                  ? 'Загружаю изображение…'
-                  : 'Создаю изображение…'}
+                  ? locale.ui.image.loading
+                  : locale.ui.image.preparing}
               </div>
             )}
             {showingPixels && (
@@ -161,8 +162,8 @@ export function MessageImage({
           <button
             type="button"
             className={`${styles.responseActionButton} ${styles.imageDownloadButton}`}
-            aria-label="Скачать изображение"
-            title="Скачать изображение"
+            aria-label={locale.ui.image.download}
+            title={locale.ui.image.download}
             aria-busy={pending}
             disabled={pending}
             onClick={() => void download()}
@@ -177,13 +178,13 @@ export function MessageImage({
             downloadError ? styles.imageDownloadError : styles.visuallyHidden
           }
         >
-          {downloadError ? 'Не удалось скачать изображение' : ''}
+          {downloadError ? locale.ui.image.downloadError : ''}
         </span>
       </div>
       {viewerOpen && ready && !error && src && (
         <ImageViewer
           src={src}
-          alt={imageAlt ?? NEWTON_IMAGE_ALT}
+          alt={imageAlt ?? locale.agent.newton.imageAlt}
           opener={opener}
           pending={pending}
           error={downloadError}

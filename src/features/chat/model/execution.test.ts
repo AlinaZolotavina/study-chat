@@ -30,7 +30,7 @@ it.each([
   { ms: 120000, label: '2 минуты' },
   { ms: 300000, label: '5 минут' },
 ])('formats elapsed duration $ms ms as $label', ({ ms, label }) => {
-  expect(formatExecutionDuration(ms)).toBe(label);
+  expect(formatExecutionDuration(ms, 'ru')).toBe(label);
 });
 
 function apply(state: ChatsState, event: AgentEventData) {
@@ -47,7 +47,7 @@ const analysis: AgentEventData = {
 
 it('preserves chronological actions and expansion through phases, streaming and completion', () => {
   let state = apply(pendingState(), { type: 'started' });
-  expect(getAgentStatusLabel(lastAssistant(state.byId['chat-a']).run)).toBe(
+  expect(getAgentStatusLabel(lastAssistant(state.byId['chat-a']).run, 'ru')).toBe(
     'Думаю над вопросом…',
   );
   expect(lastAssistant(state.byId['chat-a']).run.actions).toEqual([]);
@@ -175,7 +175,7 @@ it.each(['failed', 'cancelled'] as const)(
     const run = lastAssistant(state.byId['chat-a']).run;
     expect(run.actions).toHaveLength(1);
     expect(run.expanded).toBe(true);
-    expect(getAgentStatusLabel(run)).not.toContain('Думал');
+    expect(getAgentStatusLabel(run, 'ru')).not.toContain('Думал');
     const retried = chatsReducer(
       state,
       chatActions.retryAccepted({
@@ -257,6 +257,6 @@ it('calculates completion time from acceptance, including queueing and streaming
       ...queuedRun(),
       status: 'completed',
       finishedAt: new Date(Date.parse(TEST_TIME) + 72000).toISOString(),
-    }),
+    }, 'ru'),
   ).toBe('Думал 1 минуту 12,0 сек');
 });

@@ -112,18 +112,36 @@ it.each(['17 * 24 *', '17 * 24 /', '17 * 24 -', '17 * 24 %'])(
 );
 
 it.each([
-  { prompt: 'Сколько будет 17 × 24?', left: 17, right: 24 },
-  { prompt: '17*24', left: 17, right: 24 },
-  { prompt: '7*24', left: 7, right: 24 },
-  { prompt: '17 x 24', left: 17, right: 24 },
-  { prompt: '17 Х 24', left: 17, right: 24 },
-  { prompt: '−10000 × -10000', left: -10000, right: -10000 },
-  { prompt: '0 * 10000', left: 0, right: 10000 },
+  {
+    prompt: 'Сколько будет 17 × 24?',
+    operation: 'multiply',
+    left: 17,
+    right: 24,
+  },
+  { prompt: '17*24', operation: 'multiply', left: 17, right: 24 },
+  { prompt: '7*24', operation: 'multiply', left: 7, right: 24 },
+  { prompt: '17 x 24', operation: 'multiply', left: 17, right: 24 },
+  { prompt: '17 Х 24', operation: 'multiply', left: 17, right: 24 },
+  {
+    prompt: '−10001 × -10001',
+    operation: 'multiply',
+    left: -10001,
+    right: -10001,
+  },
+  { prompt: '0 * 100000', operation: 'multiply', left: 0, right: 100000 },
+  { prompt: '100000 + 200000', operation: 'add', left: 100000, right: 200000 },
+  { prompt: '20-20', operation: 'subtract', left: 20, right: 20 },
+  { prompt: '20 − 20', operation: 'subtract', left: 20, right: 20 },
+  { prompt: '−5 - 3', operation: 'subtract', left: -5, right: 3 },
+  { prompt: '12 + 8', operation: 'add', left: 12, right: 8 },
+  { prompt: '7 / 2', operation: 'divide', left: 7, right: 2 },
+  { prompt: '7 ÷ 2', operation: 'divide', left: 7, right: 2 },
 ])(
   'parses the anchored calculator grammar: $prompt',
-  ({ prompt, left, right }) => {
+  ({ prompt, operation, left, right }) => {
     const expected = {
       kind: 'calculator',
+      operation,
       left,
       right,
     };
@@ -146,13 +164,11 @@ it.each([
   'Помоги решить уравнение 3(2x - 4) + 5 = 2(x + 8), но не давай ответ сразу',
   '17.5 * 24',
   '17,5 * 24',
-  '10001 * 2',
-  '-10001 * 2',
   '17 * 24 + 1',
   'ответ 17 * 24',
   '17 * 24 готово',
   '2 ** 3',
-  '2 / 3',
+  '2 / 0',
   '2 * Infinity',
   '2 * 1e3',
   'alert(1)',

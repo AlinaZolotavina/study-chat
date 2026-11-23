@@ -2,11 +2,12 @@ import { useId, type ReactNode } from 'react';
 import { useAppDispatch } from '@/app/hooks';
 import { Icon } from '@/shared/Icon';
 import { chatActions } from '../model/chatsSlice';
-import { AGENT_ACTION_LABELS } from '../model/execution';
+import { getAgentActionLabels } from '../model/execution';
 import { isActiveRun } from '../model/helpers';
 import { getAgentStatusLabel } from '../model/selectors';
 import type { AssistantMessage } from '../model/types';
 import styles from './ChatWorkspace.module.css';
+import { useLocale } from '@/app/useLocale';
 
 export function ExecutionStatus({
   chatId,
@@ -18,11 +19,15 @@ export function ExecutionStatus({
   actions?: ReactNode;
 }) {
   const dispatch = useAppDispatch();
+  const { language, locale } = useLocale();
   const historyId = useId();
   const { run } = message;
   const active = isActiveRun(run);
   const label =
-    run.status === 'failed' ? 'История действий' : getAgentStatusLabel(run);
+    run.status === 'failed'
+      ? locale.ui.execution.failedHistory
+      : getAgentStatusLabel(run, language);
+  const actionLabels = getAgentActionLabels(language);
   return (
     <div className={styles.execution}>
       <div className={styles.executionHeader}>
@@ -66,15 +71,15 @@ export function ExecutionStatus({
           {run.actions.length > 0 ? (
             <ul
               className={styles.executionActions}
-              aria-label="Выполненные действия"
+              aria-label={locale.ui.execution.actions}
             >
               {run.actions.map((action) => (
-                <li key={action.id}>{AGENT_ACTION_LABELS[action.kind]}</li>
+                <li key={action.id}>{actionLabels[action.kind]}</li>
               ))}
             </ul>
           ) : (
             <p className={styles.executionEmpty}>
-              Завершённых действий пока нет
+              {locale.ui.execution.noActions}
             </p>
           )}
         </div>

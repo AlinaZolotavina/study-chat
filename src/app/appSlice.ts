@@ -1,4 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import type { Language } from '@/shared/language';
 
 export type StorageStatus =
   | { status: 'available' }
@@ -6,14 +7,21 @@ export type StorageStatus =
 
 interface AppState {
   storageStatus: StorageStatus;
+  language: Language;
 }
 
-const initialState: AppState = { storageStatus: { status: 'available' } };
+const initialState: AppState = {
+  storageStatus: { status: 'available' },
+  language: 'en',
+};
 
 const appSlice = createSlice({
   name: 'app',
   initialState,
   reducers: {
+    languageChanged(state, { payload }: PayloadAction<Language>) {
+      state.language = payload;
+    },
     storageUnavailable(
       state,
       { payload: reason }: PayloadAction<'read_error' | 'write_error'>,

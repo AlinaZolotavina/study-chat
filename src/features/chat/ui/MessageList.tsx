@@ -10,7 +10,7 @@ import { useAppSelector } from '@/app/hooks';
 import { Icon } from '@/shared/Icon';
 import { getChatById } from '../model/helpers';
 import { selectChatMessages } from '../model/selectors';
-import { LEARNING_PROMPTS } from './demoPrompts';
+import { useLocale } from '@/app/useLocale';
 import { MessageItem } from './MessageItem';
 import styles from './ChatWorkspace.module.css';
 
@@ -44,6 +44,9 @@ export function MessageList({
   onExample: (text: string) => void;
   onRequestStarted: () => void;
 }) {
+  const { locale } = useLocale();
+  // Read messages through selectors and keep scroll positions locally: they are
+  // temporary presentation state and do not need to be stored in Redux.
   const messages = useAppSelector((state) => selectChatMessages(state, chatId));
   const hasDraft = useAppSelector(
     (state) => (getChatById(state.chats, chatId)?.draft.length ?? 0) > 0,
@@ -202,17 +205,17 @@ export function MessageList({
         className={styles.conversation}
         ref={viewport}
         role="region"
-        aria-label="История диалога"
+        aria-label={locale.ui.messageList.history}
         tabIndex={0}
       >
         {messages.length === 0 ? (
           <section className={styles.emptyState} aria-labelledby="empty-title">
-            <h2 id="empty-title">С чем нужна помощь?</h2>
+            <h2 id="empty-title">{locale.ui.messageList.emptyHeading}</h2>
             <p className={styles.emptyDescription}>
-              Задай вопрос, проверь вычисление или выбери, с чего начать.
+              {locale.ui.messageList.emptyDescription}
             </p>
             <div className={styles.promptGrid}>
-              {LEARNING_PROMPTS.map((prompt) => (
+              {locale.ui.prompts.map((prompt) => (
                 <button
                   key={prompt.text}
                   type="button"
@@ -229,12 +232,11 @@ export function MessageList({
             </div>
             {hasDraft && (
               <p className={styles.exampleHint}>
-                Чтобы выбрать пример, сначала очисти поле
+                {locale.ui.messageList.clearDraftHint}
               </p>
             )}
             <p className={styles.demoNote}>
-              Демоверсия: ответы подготовлены заранее. Лучше всего работают
-              вопросы из примеров.
+              {locale.ui.messageList.demoNote}
             </p>
           </section>
         ) : (
@@ -257,7 +259,7 @@ export function MessageList({
             type="button"
             onClick={() => controls.current?.jumpToLatest()}
           >
-            <Icon name="down" />К новым сообщениям
+            <Icon name="down" />{locale.ui.messageList.jumpToLatest}
           </button>
         </div>
       )}

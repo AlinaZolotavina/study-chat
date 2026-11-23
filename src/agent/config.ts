@@ -1,3 +1,5 @@
+import type { Language } from '@/shared/language';
+
 export interface DurationRange {
   minMs: number;
   maxMs: number;
@@ -61,4 +63,10 @@ export function randomInteger(min: number, max: number, random: () => number) {
 
 export const sampleDuration = (range: DurationRange, random: () => number) =>
   randomInteger(range.minMs, range.maxMs, random);
-export const NEWTON_IMAGE_SRC = 'assets/newtons-2nd-law-of-motion.png';
+export const NEWTON_IMAGE_SRC_RU = 'assets/rus-newtons-2nd-law-of-motion.png';
+export const NEWTON_IMAGE_SRC_EN = 'assets/eng-newtons-2nd-law-of-motion.png.jpg';
+export const NEWTON_IMAGE_SRC = NEWTON_IMAGE_SRC_EN;
+
+export function getNewtonImageSrc(language: Language) {
+  return language === 'ru' ? NEWTON_IMAGE_SRC_RU : NEWTON_IMAGE_SRC_EN;
+}

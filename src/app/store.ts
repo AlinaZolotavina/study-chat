@@ -14,6 +14,11 @@ import type { ChatsState } from '@/features/chat/model/types';
 import { loadChats, type ChatStorage } from '@/storage/chatStorage';
 import { attachChatPersistence } from '@/storage/persistence';
 import { appActions, appReducer } from './appSlice';
+import {
+  attachLanguagePersistence,
+  readLanguagePreference,
+} from './languagePreference';
+import { getDictionary } from './i18n';
 
 const rootReducer = combineReducers({ chats: chatsReducer, app: appReducer });
 export type RootState = ReturnType<typeof rootReducer>;
@@ -27,15 +32,28 @@ interface StoreOptions {
   storage?: () => ChatStorage;
 }
 
+// Application dependencies are assembled here: agent, executor, Redux, and localStorage.
+// Keeping the composition root here lets integration tests replace time, IDs, and the agent.
 export function createAppStore(options: StoreOptions = {}) {
   const now = options.now ?? (() => new Date().toISOString());
   const createId = options.createId ?? (() => crypto.randomUUID());
+  const language = options.preloadedState?.app.language ?? readLanguagePreference();
   const loaded = options.storage ? loadChats(options.storage, now) : undefined;
+  const appState = appReducer(
+    appReducer(undefined, { type: '@@init' }),
+    appActions.languageChanged(language),
+  );
   const initialState = options.preloadedState ?? {
     chats:
       (loaded?.ok && loaded.chats) ||
-      createInitialChatsState(createEmptyChat(createId(), now())),
-    app: appReducer(undefined, { type: '@@init' }),
+      createInitialChatsState(
+        createEmptyChat(
+          createId(),
+          now(),
+          getDictionary(language).ui.newChatTitle,
+        ),
+      ),
+    app: appState,
   };
   const preloadedState =
     loaded && !loaded.ok
@@ -48,6 +66,8 @@ export function createAppStore(options: StoreOptions = {}) {
         }
       : initialState;
   // Callbacks are used by commands only after configureStore has returned.
+  // The executor receives the store through callbacks, so it can be created before
+  // configureStore while accessing state and dispatch only after store construction.
   const requestExecutor: RequestExecutor = createRequestExecutor({
     agent: options.agent ?? createMockAgent({ now, createId }),
     now,
@@ -68,6 +88,7 @@ export function createAppStore(options: StoreOptions = {}) {
         thunk: { extraArgument: { requestExecutor, now, createId } },
       }),
   });
+  // Start persistence only after saved chats have been loaded and restored.
   const detachStorage =
     loaded?.ok && preloadedState.app.storageStatus.status === 'available'
       ? attachChatPersistence({
@@ -80,9 +101,14 @@ export function createAppStore(options: StoreOptions = {}) {
           saveInitial: loaded.needsSave || options.preloadedState !== undefined,
         })
       : undefined;
+  const detachLanguage = attachLanguagePersistence({
+    getLanguage: () => store.getState().app.language,
+    subscribe: store.subscribe,
+  });
   return Object.assign(store, {
     dispose: async () => {
       detachStorage?.();
+      detachLanguage();
       await requestExecutor.dispose();
     },
   });

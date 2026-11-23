@@ -6,8 +6,13 @@ import {
 import type { Run } from '@/features/chat/model/types';
 import {
   selectCanRetry,
-  selectChatSuggestions,
+  selectChatSuggestions as selectChatSuggestionsForLanguage,
 } from '@/features/chat/model/selectors';
+
+const selectChatSuggestions = (
+  state: Parameters<typeof selectChatSuggestionsForLanguage>[0],
+  chatId: string,
+) => selectChatSuggestionsForLanguage(state, chatId, 'ru');
 import { lastAssistant, makeTurn, queuedRun, TEST_TIME } from '@/test/fixtures';
 import { loadChats, restoreInterrupted, STORAGE_KEY } from './chatStorage';
 

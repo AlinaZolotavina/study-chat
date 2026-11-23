@@ -1,5 +1,7 @@
 import { memo, useRef } from 'react';
 import { useAppSelector } from '@/app/hooks';
+import { localizeChatTitle } from '@/app/i18n';
+import { useLocale } from '@/app/useLocale';
 import { Icon } from '@/shared/Icon';
 import {
   selectChatRowMetadata,
@@ -22,13 +24,14 @@ const ChatRow = memo(function ChatRow({
   const metadata = useAppSelector((state) =>
     selectChatRowMetadata(state, chatId),
   );
+  const { language, locale } = useLocale();
   if (!metadata) return null;
   const unread = !selected && metadata.hasUnreadReply;
   const accessibleName = [
-    metadata.title,
-    metadata.isActive ? 'Формируется ответ' : '',
-    unread ? 'Новый ответ' : '',
-    metadata.hasError ? 'Ошибка ответа' : '',
+    localizeChatTitle(metadata.title, language),
+    metadata.isActive ? locale.ui.sidebar.activeReply : '',
+    unread ? locale.ui.sidebar.unreadReply : '',
+    metadata.hasError ? locale.ui.sidebar.replyError : '',
   ]
     .filter(Boolean)
     .join(', ');
@@ -40,11 +43,13 @@ const ChatRow = memo(function ChatRow({
         onClick={() => onSelect(chatId)}
         aria-current={selected ? 'true' : undefined}
         aria-label={accessibleName}
-        title={metadata.title}
+        title={localizeChatTitle(metadata.title, language)}
         data-chat-id={chatId}
       >
         <Icon name="chat" className={styles.chatIcon ?? ''} />
-        <span className={styles.chatTitle}>{metadata.title}</span>
+        <span className={styles.chatTitle}>
+          {localizeChatTitle(metadata.title, language)}
+        </span>
         <span className={styles.chatMarker} aria-hidden="true">
           {unread ? (
             <span className={styles.unreadDot} />
@@ -56,8 +61,11 @@ const ChatRow = memo(function ChatRow({
       <button
         type="button"
         className={styles.deleteChatButton}
-        aria-label={`Удалить диалог «${metadata.title}»`}
-        title="Удалить диалог"
+        aria-label={locale.ui.sidebar.deleteChat.replace(
+          '{title}',
+          localizeChatTitle(metadata.title, language),
+        )}
+        title={locale.ui.deleteDialog.confirm}
         onClick={(event) => onDelete(chatId, event.currentTarget)}
       >
         <Icon name="trash" />
@@ -67,6 +75,7 @@ const ChatRow = memo(function ChatRow({
 });
 
 function BrandLockup() {
+  const { locale } = useLocale();
   return (
     <div className={styles.brandLockup}>
       <Icon name="sparkle" className={styles.brandMark ?? ''} />
@@ -74,39 +83,25 @@ function BrandLockup() {
         <div className={styles.brand}>
           LOM <span>AI</span>
         </div>
-        <p className={styles.brandCaption}>Твой учебный помощник</p>
+        <p className={styles.brandCaption}>{locale.ui.sidebar.brandCaption}</p>
       </div>
     </div>
   );
 }
 
 function DemoContent() {
+  const { locale } = useLocale();
   return (
     <div className={styles.demoContent}>
-      <p>
-        Ответы заранее подготовлены, поэтому лучше всего работают вопросы из
-        предложенных примеров.
-      </p>
-      <p>
-        В каждом сценарии предусмотрены три варианта ошибок — по одному для
-        каждого типа операции. Чтобы увидеть полный ответ, нажмите «Повторить».
-      </p>
-      <p>Предусмотренные сценарии ошибок:</p>
+      <p>{locale.ui.sidebar.demoInfo}</p>
+      <p>{locale.ui.sidebar.failureInfo}</p>
+      <p>{locale.ui.sidebar.failureHeading}</p>
       <ul>
-        <li>
-          Калькулятор: инструмент возвращает ошибку вместо результата
-          вычисления.
-        </li>
-        <li>Уравнение: объяснение обрывается при переносе слагаемых.</li>
-        <li>
-          Схема Ньютона: генерация изображения завершается ошибкой, и схема не
-          появляется.
-        </li>
+        <li>{locale.ui.sidebar.calculatorFailure}</li>
+        <li>{locale.ui.sidebar.equationFailure}</li>
+        <li>{locale.ui.sidebar.imageFailure}</li>
       </ul>
-      <p>
-        Сценарии ошибок сохраняются после перезагрузки страницы. Остановленная
-        операция не расходует попытку демонстрации ошибки.
-      </p>
+      <p>{locale.ui.sidebar.failurePersistence}</p>
     </div>
   );
 }
@@ -137,6 +132,7 @@ export function Sidebar({
   onNewChat: () => void;
 }) {
   const chatIds = useAppSelector(selectOrderedChatIds);
+  const { locale } = useLocale();
   const aboutDialogRef = useRef<ChatDialogHandle>(null);
   const newChatButton = (
     <button
@@ -147,29 +143,29 @@ export function Sidebar({
           : styles.newChatButton
       }
       onClick={onNewChat}
-      aria-label="Новый диалог"
-      title={collapsed ? 'Новый диалог' : undefined}
+      aria-label={locale.ui.sidebar.newChat}
+      title={collapsed ? locale.ui.sidebar.newChat : undefined}
     >
       <Icon name="plus" />
-      {!collapsed && 'Новый диалог'}
+      {!collapsed && locale.ui.sidebar.newChat}
     </button>
   );
   const aboutButton = (
     <button
       type="button"
       className={collapsed ? styles.railButton : styles.aboutButton}
-      aria-label="О демоверсии"
-      title={collapsed ? 'О демоверсии' : undefined}
+      aria-label={locale.ui.sidebar.about}
+      title={collapsed ? locale.ui.sidebar.about : undefined}
       onClick={onOpenAbout}
     >
       <Icon name="info" />
-      {!collapsed && 'О демоверсии'}
+      {!collapsed && locale.ui.sidebar.about}
     </button>
   );
   const navigation = (
     <>
       <h2 className={styles.sidebarTitle} id="dialogs-title">
-        Диалоги
+        {locale.ui.sidebar.dialogs}
       </h2>
       <nav className={styles.chatNavigation} aria-labelledby="dialogs-title">
         <ul className={styles.chatList}>
@@ -189,24 +185,23 @@ export function Sidebar({
   return (
     <aside
       className={`${styles.sidebar} ${collapsed ? styles.collapsedSidebar : ''}`}
-      aria-label="Диалоги и справка"
+      aria-label={locale.ui.sidebar.dialogsAndHelp}
     >
       <div className={styles.sidebarHeader}>
         {!collapsed && <BrandLockup />}
-        {isMobile && <span className={styles.demoBadge}>Демоверсия</span>}
         {!isMobile && (
           <button
             type="button"
             className={styles.sidebarToggle}
             aria-label={
               collapsed
-                ? 'Развернуть панель диалогов'
-                : 'Свернуть панель диалогов'
+                ? locale.ui.sidebar.expand
+                : locale.ui.sidebar.collapse
             }
             title={
               collapsed
-                ? 'Развернуть панель диалогов'
-                : 'Свернуть панель диалогов'
+                ? locale.ui.sidebar.expand
+                : locale.ui.sidebar.collapse
             }
             aria-expanded={!collapsed}
             aria-controls="desktop-sidebar-content"
@@ -239,7 +234,7 @@ export function Sidebar({
             <button
               type="button"
               className={styles.dialogClose}
-              aria-label="Закрыть меню диалогов"
+              aria-label={locale.ui.sidebar.closeMenu}
               onClick={onCloseMenu}
             >
               <Icon name="close" />
@@ -260,11 +255,11 @@ export function Sidebar({
           animated
         >
           <div className={styles.demoDialogHeader}>
-            <h2 id="demo-dialog-title">О демоверсии</h2>
+            <h2 id="demo-dialog-title">{locale.ui.sidebar.about}</h2>
             <button
               type="button"
               className={styles.dialogClose}
-              aria-label="Закрыть справку"
+              aria-label={locale.ui.sidebar.closeAbout}
               onClick={() => aboutDialogRef.current?.close()}
             >
               <Icon name="close" />

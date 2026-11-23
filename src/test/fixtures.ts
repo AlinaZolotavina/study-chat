@@ -1,10 +1,10 @@
 import type { AgentEvent, AgentEventData, AgentRequest } from '@/agent/types';
 import {
   STREAMING_CONFIG,
-  NEWTON_IMAGE_SRC,
+  NEWTON_IMAGE_SRC_RU,
   type MockTiming,
 } from '@/agent/config';
-import { NEWTON_IMAGE_ALT } from '@/agent/tools/generateImage';
+import { NEWTON_IMAGE_ALT_RU } from '@/agent/tools/generateImage';
 import {
   createEmptyChat,
   createInitialChatsState,
@@ -25,9 +25,9 @@ export const imageToolCall = (callId = 'image-call'): AgentEventData => ({
   input: { topic: 'newton', imageType: 'educational_diagram' },
 });
 export const imageToolResult = (
-  imageSrc = NEWTON_IMAGE_SRC,
+  imageSrc = NEWTON_IMAGE_SRC_RU,
   callId = 'image-call',
-  alt = NEWTON_IMAGE_ALT,
+  alt = NEWTON_IMAGE_ALT_RU,
 ): AgentEventData => ({
   type: 'tool_result',
   tool: 'generate_image',

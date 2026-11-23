@@ -18,7 +18,8 @@ export type LearningContext =
       verificationExplained: boolean;
     };
 
-// Replay only completed user commands. Both the agent and UI use this transition.
+// Context is not duplicated in the store; it is derived from completed conversation history.
+// Both agent scenario selection and UI suggestions use this transition logic.
 export function applyCompletedCommand(
   context: LearningContext,
   command: Command,
@@ -97,6 +98,7 @@ export function applyCompletedCommand(
 export function deriveContext(
   history: readonly AgentHistoryTurn[],
 ): LearningContext {
+  // Replaying commands ensures history is interpreted consistently after reload.
   return history.reduce<LearningContext>(
     (context, turn) =>
       applyCompletedCommand(context, classifyCommand(turn.userText)),

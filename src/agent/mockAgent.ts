@@ -1,5 +1,5 @@
 import { delay } from '@/shared/delay';
-import { calculateProduct } from './tools/calculator';
+import { calculate } from './tools/calculator';
 import { classifyCommand } from './commands';
 import {
   MOCK_TIMING,
@@ -18,6 +18,7 @@ import type {
   AgentEvent,
   AgentEventData,
 } from './types';
+import { getDictionary } from '@/app/i18n';
 
 interface MockAgentOptions {
   now?: () => string;
@@ -34,6 +35,8 @@ export function createMockAgent(options: MockAgentOptions = {}): Agent {
   const streaming = { ...STREAMING_CONFIG, ...options.streaming };
   const random = options.random ?? Math.random;
 
+  // The agent implements the executor's event contract: it selects a scenario,
+  // calls a tool when needed, and then emits text fragments.
   return async function* (request, signal): AsyncGenerator<AgentEvent> {
     const event = (data: AgentEventData): AgentEvent => ({
       ...data,
@@ -48,7 +51,9 @@ export function createMockAgent(options: MockAgentOptions = {}): Agent {
       classifyCommand(request.prompt),
       deriveContext(request.history),
       request.demonstratedFailures,
+      request.language ?? 'en',
     );
+    const agentCopy = getDictionary(request.language ?? 'en').agent;
     await delay(timing.queuedMs, signal);
     yield event({ type: 'started' });
     await delay(sampleDuration(timing.analysisMs, random), signal);
@@ -62,7 +67,7 @@ export function createMockAgent(options: MockAgentOptions = {}): Agent {
         tool: 'calculator',
         callId,
         input: {
-          operation: 'multiply',
+          operation: scenario.operation,
           left: scenario.left,
           right: scenario.right,
         },
@@ -71,7 +76,7 @@ export function createMockAgent(options: MockAgentOptions = {}): Agent {
       let value: number;
       try {
         if (scenario.fail) throw new Error('Mock calculator failed');
-        value = calculateProduct(scenario.left, scenario.right);
+        value = calculate(scenario.operation, scenario.left, scenario.right);
       } catch {
         yield event({
           type: 'error',
@@ -88,7 +93,14 @@ export function createMockAgent(options: MockAgentOptions = {}): Agent {
         output: { value },
       });
       yield actionCompleted('calculated');
-      text = `**${scenario.left} × ${scenario.right} = ${value}**. Я проверил произведение с помощью калькулятора.`;
+      const symbols = {
+        add: '+',
+        subtract: '−',
+        multiply: '×',
+        divide: '÷',
+      } as const;
+      const symbol = symbols[scenario.operation];
+      text = `**${scenario.left} ${symbol} ${scenario.right} = ${value}**. ${agentCopy.calculatorSuffix}`;
     } else {
       text = scenario.text;
       if (scenario.kind === 'image') {
@@ -108,6 +120,7 @@ export function createMockAgent(options: MockAgentOptions = {}): Agent {
           output = await generateImage(input, signal, {
             delayMs: sampleDuration(timing.imageMs, random),
             fail: scenario.fail,
+            language: request.language ?? 'en',
           });
         } catch (error) {
           if (signal.aborted) throw error;

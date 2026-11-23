@@ -12,6 +12,8 @@ export type RunId = string;
 export type ToolCallId = string;
 export type Timestamp = string;
 
+// These types describe the persisted conversation model. Run statuses are domain
+// state, not references to executing JavaScript tasks.
 export interface CompletedAgentAction {
   id: string;
   kind: AgentActionKind;

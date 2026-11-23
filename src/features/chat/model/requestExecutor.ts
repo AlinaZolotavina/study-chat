@@ -20,6 +20,7 @@ import type {
   QueuedRun,
   UserMessage,
 } from './types';
+import type { Language } from '@/shared/language';
 
 interface ExecutorOptions {
   agent: Agent;
@@ -119,6 +120,8 @@ export function createRequestExecutor(options: ExecutorOptions) {
     }
   }
 
+  // Read the agent stream and translate it into Redux actions. Runtime resources
+  // stay here, while serializable results and statuses belong in chatsSlice.
   async function consume(handle: RunHandle) {
     const { request, controller } = handle;
     let iterator: AsyncIterator<AgentEvent> | undefined;
@@ -166,7 +169,13 @@ export function createRequestExecutor(options: ExecutorOptions) {
     return true;
   }
 
-  function send(chatId: string, reply?: SuggestedReplyInput) {
+  // Snapshot history when accepting a request so later chat changes do not alter
+  // the input of an already running scenario.
+  function send(
+    chatId: string,
+    reply?: SuggestedReplyInput,
+    language: Language = 'en',
+  ) {
     if (disposed) return false;
     const chat = getChatById(getState(), chatId);
     if (!chat) return false;
@@ -210,6 +219,7 @@ export function createRequestExecutor(options: ExecutorOptions) {
       prompt: user.text,
       history: buildAgentHistory(chat.messages),
       demonstratedFailures: [...(chat.demonstratedFailures ?? [])],
+      language,
     };
     dispatch(
       chatActions.requestAccepted({
@@ -222,7 +232,13 @@ export function createRequestExecutor(options: ExecutorOptions) {
     return start(request);
   }
 
-  function retry(chatId: string, assistantMessageId: string) {
+  // Retry uses the original question, excludes its unfinished response from history,
+  // and gets a new runId so late events can be filtered out.
+  function retry(
+    chatId: string,
+    assistantMessageId: string,
+    language: Language = 'en',
+  ) {
     if (disposed) return false;
     const chat = getChatById(getState(), chatId);
     const message = chat && getLastAssistant(chat.messages);
@@ -252,6 +268,7 @@ export function createRequestExecutor(options: ExecutorOptions) {
       prompt: user.text,
       history: buildAgentHistory(chat.messages, user.id),
       demonstratedFailures: [...(chat.demonstratedFailures ?? [])],
+      language,
     };
     dispatch(chatActions.retryAccepted({ chatId, assistantMessageId, run }));
     return start(request);

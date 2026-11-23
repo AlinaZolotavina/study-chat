@@ -12,10 +12,14 @@ import type {
 export const MAX_MESSAGE_LENGTH = 4000;
 export const REQUEST_TIMEOUT_MS = 30_000;
 
-export function createEmptyChat(id: string, createdAt: string): Chat {
+export function createEmptyChat(
+  id: string,
+  createdAt: string,
+  title = 'Новый диалог',
+): Chat {
   return {
     id,
-    title: 'Новый диалог',
+    title,
     createdAt,
     lastQuestionAt: null,
     draft: '',
@@ -85,6 +89,8 @@ export function buildAgentHistory(
   messages: readonly Message[],
   beforeUserMessageId?: string,
 ): AgentHistoryTurn[] {
+  // Include only completed user/assistant pairs in context. A partial response
+  // after Stop or an error is not treated as confirmed conversation history.
   const end =
     beforeUserMessageId === undefined
       ? messages.length

@@ -9,11 +9,16 @@ import {
   selectCanRetry,
   selectCanSend,
   selectChatMessages,
-  selectChatSuggestions,
+  selectChatSuggestions as selectChatSuggestionsForLanguage,
   selectChatRowMetadata,
   selectOrderedChatIds,
   selectSelectedChat,
 } from './selectors';
+
+const selectChatSuggestions = (
+  state: Parameters<typeof selectChatSuggestionsForLanguage>[0],
+  chatId: string,
+) => selectChatSuggestionsForLanguage(state, chatId, 'ru');
 
 const baseRun = queuedRun();
 const runCases: { run: Run; active: boolean; retry: boolean }[] = [

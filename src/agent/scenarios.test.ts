@@ -12,6 +12,7 @@ function answer(prompt: string, ...previous: string[]) {
       previous.map((userText) => ({ userText, assistantText: 'unused' })),
     ),
     [],
+    'ru',
   );
 }
 function text(prompt: string, ...previous: string[]) {
@@ -129,4 +130,15 @@ it('is deterministic for an identical request, history and attempt', () => {
   expect(answer('Дальше', equation, 'Почему нужно раскрывать скобки?')).toEqual(
     answer('Дальше', equation, 'Почему нужно раскрывать скобки?'),
   );
+});
+
+it('selects prepared scenario copy in English when requested', () => {
+  const result = chooseScenario(
+    classifyCommand("Explain Newton's second law"),
+    deriveContext([]),
+    [],
+    'en',
+  );
+  if (result.kind !== 'text') throw new Error('Expected a text scenario');
+  expect(result.text).toContain("Newton's second law");
 });

@@ -16,6 +16,8 @@ export type StorageLoadResult =
     }
   | { ok: false };
 
+// After reload, the previous iterator and AbortController cannot be resumed.
+// Keep partial response text, but mark active runs as interrupted.
 export function restoreInterrupted(chats: ChatsState, now: () => string) {
   let changed = false;
   let restoredAt: string | undefined;
@@ -54,6 +56,8 @@ export function loadChats(
   getStorage: () => ChatStorage,
   now: () => string,
 ): StorageLoadResult {
+  // Treat JSON as untrusted input and validate it at runtime. If reading or validation
+  // fails, the calling store switches the app to in-memory mode.
   try {
     const storage = getStorage();
     const raw = storage.getItem(STORAGE_KEY);

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@/shared/Icon';
 import { copyResponseText } from './responseActions';
+import { useLocale } from '@/app/useLocale';
 import styles from './ChatWorkspace.module.css';
 
 export function CopyResponse({ text }: { text: string }) {
+  const { locale } = useLocale();
   const [status, setStatus] = useState<'idle' | 'pending' | 'copied' | 'error'>(
     'idle',
   );
@@ -37,7 +39,7 @@ export function CopyResponse({ text }: { text: string }) {
       setStatus('error');
     }
   }
-  const label = status === 'copied' ? 'Скопировано' : 'Копировать ответ';
+  const label = status === 'copied' ? locale.ui.copy.copied : locale.ui.copy.copy;
   return (
     <div className={styles.responseActions}>
       <button
@@ -59,9 +61,9 @@ export function CopyResponse({ text }: { text: string }) {
         }
       >
         {status === 'error'
-          ? 'Не удалось скопировать ответ'
+          ? locale.ui.copy.error
           : status === 'copied'
-            ? 'Скопировано'
+            ? locale.ui.copy.copied
             : ''}
       </span>
     </div>

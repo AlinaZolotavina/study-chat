@@ -1,12 +1,13 @@
 import type { AgentActionKind } from '@/agent/types';
 import type { Run } from './types';
+import { getDictionary } from '@/app/i18n';
+import type { Language } from '@/shared/language';
 
-export const AGENT_ACTION_LABELS: Readonly<Record<AgentActionKind, string>> = {
-  analyzed: 'Проанализировал запрос',
-  calculated: 'Выполнил вычисление с помощью калькулятора',
-  image_prepared: 'Использовал генератор изображений',
-  answer_composed: 'Сформировал ответ',
-};
+export function getAgentActionLabels(
+  language: Language = 'en',
+): Readonly<Record<AgentActionKind, string>> {
+  return getDictionary(language).status.actionLabels;
+}
 
 function counted(value: number, forms: readonly [string, string, string]) {
   const lastTwo = value % 100;
@@ -22,21 +23,35 @@ function counted(value: number, forms: readonly [string, string, string]) {
   return `${value} ${form}`;
 }
 
-export function formatExecutionDuration(milliseconds: number) {
+export function formatExecutionDuration(
+  milliseconds: number,
+  language: Language = 'en',
+) {
+  const executionText = getDictionary(language).ui.execution;
   const tenths = Number.isFinite(milliseconds)
     ? Math.max(0, Math.round(milliseconds / 100))
     : 0;
   const minutes = Math.floor(tenths / 600);
   const seconds = (tenths % 600) / 10;
-  const secondsLabel = `${seconds.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} сек`;
+  const numberLocale = language === 'ru' ? 'ru-RU' : 'en-US';
+  const secondsLabel = `${seconds.toLocaleString(numberLocale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${executionText.seconds}`;
   return [
-    ...(minutes ? [counted(minutes, ['минуту', 'минуты', 'минут'])] : []),
+    ...(minutes
+      ? [
+          counted(
+            minutes,
+            executionText.minuteForms as [string, string, string],
+          ),
+        ]
+      : []),
     ...(!minutes || seconds ? [secondsLabel] : []),
   ].join(' ');
 }
 
 export function getCompletedExecutionLabel(
   run: Extract<Run, { status: 'completed' }>,
+  language: Language = 'en',
 ) {
-  return `Думал ${formatExecutionDuration(Date.parse(run.finishedAt) - Date.parse(run.acceptedAt))}`;
+  const prefix = getDictionary(language).ui.execution.completedPrefix;
+  return `${prefix} ${formatExecutionDuration(Date.parse(run.finishedAt) - Date.parse(run.acceptedAt), language)}`;
 }

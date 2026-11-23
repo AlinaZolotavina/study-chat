@@ -1,5 +1,6 @@
 import { useId, useLayoutEffect, type RefObject } from 'react';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
+import { useLocale } from '@/app/useLocale';
 import { Icon } from '@/shared/Icon';
 import { chatActions } from '../model/chatsSlice';
 import { sendMessage, stopGeneration } from '../model/commands';
@@ -18,7 +19,10 @@ export function Composer({
   inputRef: RefObject<HTMLTextAreaElement | null>;
   onSent: () => void;
 }) {
+  // The selected chat's draft lives in Redux. Send and Stop go through thunks,
+  // so the UI does not directly control the agent or its AbortController.
   const dispatch = useAppDispatch();
+  const { language, locale } = useLocale();
   const draft = useAppSelector(
     (state) => getChatById(state.chats, chatId)?.draft ?? '',
   );
@@ -41,7 +45,7 @@ export function Composer({
   }, [draft, chatId, inputRef, isMobile]);
 
   function send() {
-    if (dispatch(sendMessage(chatId))) onSent();
+    if (dispatch(sendMessage(chatId, undefined, language))) onSent();
   }
   return (
     <form
@@ -61,8 +65,8 @@ export function Composer({
             className={styles.textarea}
             rows={1}
             value={draft}
-            placeholder="Спроси LOM AI"
-            aria-label="Сообщение"
+            placeholder={locale.ui.composer.placeholder}
+            aria-label={locale.ui.composer.message}
             aria-invalid={tooLong}
             aria-describedby={description}
             onChange={(event) =>
@@ -82,8 +86,8 @@ export function Composer({
               <button
                 type="button"
                 className={`${styles.iconButton} ${styles.stopButton}`}
-                aria-label="Остановить ответ"
-                title="Остановить ответ"
+                aria-label={locale.ui.composer.stop}
+                title={locale.ui.composer.stop}
                 onClick={() => dispatch(stopGeneration(chatId))}
               >
                 <Icon name="stop" />
@@ -93,8 +97,8 @@ export function Composer({
               type="submit"
               className={`${styles.iconButton} ${styles.sendButton}`}
               disabled={!canSend}
-              aria-label="Отправить сообщение"
-              title="Отправить сообщение"
+              aria-label={locale.ui.composer.send}
+              title={locale.ui.composer.send}
               aria-keyshortcuts="Enter"
             >
               <Icon name="send" />
@@ -103,18 +107,18 @@ export function Composer({
         </div>
         {tooLong && (
           <p id={`${id}-error`} className={styles.inputError} role="status">
-            Слишком длинное сообщение. Максимум — 4000 символов.
+            {locale.ui.composer.tooLong}
           </p>
         )}
         <div className={styles.composerFooter}>
           {hasHint && (
             <p id={`${id}-hint`} className={styles.composerHint}>
-              Enter — отправить · Shift+Enter — новая строка
+              {locale.ui.composer.keyboardHint}
             </p>
           )}
           <span
             className={`${styles.counter} ${tooLong ? styles.errorText : ''}`}
-            aria-label="Количество символов"
+            aria-label={locale.ui.composer.characterCount}
           >
             {draft.length} / {MAX_MESSAGE_LENGTH}
           </span>

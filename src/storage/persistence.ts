@@ -4,6 +4,8 @@ import { STORAGE_KEY, type ChatStorage } from './chatStorage';
 
 export const SAVE_DEBOUNCE_MS = 400;
 
+// Stream fragments and draft edits update state frequently, so debounce their writes.
+// Save completed runs and unread-state changes immediately.
 function needsImmediateSave(previous: ChatsState, next: ChatsState) {
   if (
     previous.order.length !== next.order.length ||
@@ -70,6 +72,8 @@ export function attachChatPersistence(options: PersistenceOptions) {
       options.onWriteError();
     }
   }
+  // Keep this subscription outside reducers so Redux stays synchronous and pure,
+  // while writes to browser storage remain an external side effect.
   const unsubscribe = options.subscribe(() => {
     const next = options.getChats();
     const before = previous;

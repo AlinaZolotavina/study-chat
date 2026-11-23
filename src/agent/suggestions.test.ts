@@ -7,12 +7,24 @@ const equation = 'Помоги решить уравнение';
 function suggestions(...prompts: string[]) {
   return getSuggestions(
     deriveContext(prompts.map((userText) => ({ userText, assistantText: '' }))),
+    'ru',
   );
 }
 const actions = ['Объясни проще', 'Покажи схему', 'Приведи пример из жизни'];
 
 it('offers exactly three independent actions after the first Newton explanation', () => {
   expect(suggestions(newton)).toEqual(actions);
+});
+
+it('returns suggestions in the requested language', () => {
+  const context = deriveContext([
+    { userText: "Explain Newton's second law", assistantText: 'unused' },
+  ]);
+  expect(getSuggestions(context, 'en')).toEqual([
+    'Explain it more simply',
+    'Show a diagram',
+    'Give a real-life example',
+  ]);
 });
 
 it('recognizes short Newton phrases as the same completed actions', () => {

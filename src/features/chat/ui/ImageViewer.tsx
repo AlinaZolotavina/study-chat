@@ -2,6 +2,7 @@ import { useId, useLayoutEffect, useState, type RefObject } from 'react';
 import { Icon } from '@/shared/Icon';
 import { ChatDialog } from './ChatDialog';
 import styles from './ChatWorkspace.module.css';
+import { useLocale } from '@/app/useLocale';
 
 export function ImageViewer({
   src,
@@ -20,6 +21,7 @@ export function ImageViewer({
   onDownload: () => void;
   onClose: () => void;
 }) {
+  const { locale } = useLocale();
   const id = useId();
   const [failed, setFailed] = useState(false);
   useLayoutEffect(() => {
@@ -65,18 +67,18 @@ export function ImageViewer({
       onClose={onClose}
     >
       <span id={`image-viewer-title-${id}`} className={styles.visuallyHidden}>
-        Изображение схемы
+        {locale.ui.image.viewerTitle}
       </span>
       <header className={styles.imageViewerToolbar}>
         <span role="status" className={styles.viewerDownloadStatus}>
-          {error ? 'Не удалось скачать изображение' : ''}
+          {error ? locale.ui.image.downloadError : ''}
         </span>
         <button
           type="button"
           autoFocus
           className={styles.responseActionButton}
-          aria-label="Закрыть просмотр изображения"
-          title="Закрыть просмотр изображения"
+          aria-label={locale.ui.image.closeViewer}
+          title={locale.ui.image.closeViewer}
           onClick={onClose}
         >
           <Icon name="close" />
@@ -89,7 +91,7 @@ export function ImageViewer({
         }}
       >
         {failed ? (
-          <p role="status">Не удалось открыть изображение</p>
+          <p role="status">{locale.ui.image.openError}</p>
         ) : (
           <div className={styles.imageViewerCanvas}>
             <img
@@ -102,8 +104,8 @@ export function ImageViewer({
             <button
               type="button"
               className={`${styles.responseActionButton} ${styles.imageDownloadButton}`}
-              aria-label="Скачать изображение"
-              title="Скачать изображение"
+              aria-label={locale.ui.image.download}
+              title={locale.ui.image.download}
               aria-busy={pending}
               disabled={pending}
               onClick={onDownload}

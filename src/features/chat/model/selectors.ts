@@ -11,6 +11,8 @@ import {
 } from './helpers';
 import type { ChatRootState, Message, Run } from './types';
 import { getCompletedExecutionLabel } from './execution';
+import type { Language } from '@/shared/language';
+import { getDictionary } from '@/app/i18n';
 
 const EMPTY_MESSAGES: readonly Message[] = Object.freeze([]);
 export const selectSelectedChat = (state: ChatRootState) =>
@@ -19,12 +21,18 @@ export const selectOrderedChatIds = (state: ChatRootState) => state.chats.order;
 export const selectChatMessages = (state: ChatRootState, chatId: string) =>
   getChatById(state.chats, chatId)?.messages ?? EMPTY_MESSAGES;
 
+// Suggestions use the same completed history as the agent context, so the UI offers
+// only commands that fit the current learning step.
 export const selectChatSuggestions = createSelector(
-  [selectChatMessages],
-  (messages): readonly string[] => {
+  [
+    selectChatMessages,
+    (_state: ChatRootState, _chatId: string, language: Language = 'en') =>
+      language,
+  ],
+  (messages, language): readonly string[] => {
     const last = getLastAssistant(messages);
     return last?.run.status === 'completed'
-      ? getSuggestions(deriveContext(buildAgentHistory(messages)))
+      ? getSuggestions(deriveContext(buildAgentHistory(messages)), language)
       : EMPTY_SUGGESTIONS;
   },
 );
@@ -71,42 +79,47 @@ export const selectChatRowMetadata = createSelector(
 export function selectAgentStatusLabel(
   state: ChatRootState,
   chatId: string,
+  language: Language = 'en',
 ): string | null {
   const run = getLastAssistant(selectChatMessages(state, chatId))?.run;
   if (!run) return null;
-  return getAgentStatusLabel(run);
+  return getAgentStatusLabel(run, language);
 }
 
-export function getAgentStatusLabel(run: Run): string | null {
+export function getAgentStatusLabel(
+  run: Run,
+  language: Language = 'en',
+): string | null {
+  const labels = getDictionary(language).status;
   switch (run.status) {
     case 'queued':
-      return 'Сообщение отправлено';
+      return labels.queued;
     case 'streaming':
-      return 'Пишу ответ…';
+      return labels.streaming;
     case 'completed':
-      return getCompletedExecutionLabel(run);
+      return getCompletedExecutionLabel(run, language);
     case 'cancelled':
-      return 'Ответ остановлен';
+      return labels.cancelled;
     case 'interrupted':
-      return 'Ответ прерван после перезагрузки страницы';
+      return labels.interrupted;
     case 'failed':
       return run.error.code === 'timeout'
-        ? 'Ответ занял слишком много времени. Попробуй ещё раз.'
-        : 'Не удалось завершить ответ. Попробуй ещё раз.';
+        ? labels.failedTimeout
+        : labels.failed;
     case 'processing': {
       const phase = run.phase.kind;
       switch (phase) {
         case 'analyzing':
-          return 'Думаю над вопросом…';
+          return labels.analyzing;
         case 'composing':
-          return 'Готовлю ответ…';
+          return labels.composing;
         case 'preparing_image':
-          return 'Создаю изображение…';
+          return labels.preparingImage;
         case 'using_tool':
           return run.phase.kind === 'using_tool' &&
             run.phase.tool === 'generate_image'
-            ? 'Создаю изображение…'
-            : 'Использую калькулятор…';
+            ? labels.preparingImage
+            : labels.usingCalculator;
         default: {
           const unreachable: never = phase;
           return unreachable;

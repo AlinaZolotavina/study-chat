@@ -7,7 +7,7 @@ import {
 } from '@/test/fixtures';
 import * as calculator from './tools/calculator';
 import * as scenarios from './scenarios';
-import { NEWTON_IMAGE_SRC } from './config';
+import { NEWTON_IMAGE_SRC_RU } from './config';
 import { createMockAgent } from './mockAgent';
 import {
   DEMO_FAILURE_KINDS,
@@ -25,7 +25,7 @@ function start(
   options: Partial<
     Pick<
       AgentRequest,
-      'history' | 'attempt' | 'chatId' | 'demonstratedFailures'
+      'history' | 'attempt' | 'chatId' | 'demonstratedFailures' | 'language'
     >
   > & {
     agent?: Agent;
@@ -37,6 +37,7 @@ function start(
     assistantMessageId: 'assistant-1',
     runId: 'run-1',
     attempt: options.attempt ?? 1,
+    language: options.language ?? 'ru',
     history: options.history ?? [],
     // Successful response fixtures; scheduled failures explicitly pass [].
     demonstratedFailures: options.demonstratedFailures ?? DEMO_FAILURE_KINDS,
@@ -234,7 +235,7 @@ it('prepares the supplied Newton image directly after the first explanation (S-0
   ).toMatchObject({
     type: 'tool_result',
     tool: 'generate_image',
-    output: { status: 'success', imageSrc: NEWTON_IMAGE_SRC },
+    output: { status: 'success', imageSrc: NEWTON_IMAGE_SRC_RU },
   });
   expect(
     run.events.find(
@@ -332,7 +333,7 @@ it.each([
       retry.events.find((event) => event.type === 'tool_result'),
     ).toMatchObject({
       tool: 'generate_image',
-      output: { status: 'success', imageSrc: NEWTON_IMAGE_SRC },
+      output: { status: 'success', imageSrc: NEWTON_IMAGE_SRC_RU },
     });
     expect(retry.events.at(-1)?.type).toBe('completed');
     expect(textOf(retry.events)).toBe('');
@@ -369,18 +370,18 @@ it('solves the fixed equation in steps without leaking the answer early (S-04/S-
 });
 
 it.each([
-  { prompt: '17 * 24', left: 17, value: 408 },
-  { prompt: '7*24', left: 7, value: 168 },
+  { prompt: '17 * 24', operation: 'multiply', left: 17, right: 24, value: 408 },
+  { prompt: '20-20', operation: 'subtract', left: 20, right: 20, value: 0 },
 ])(
   'runs the calculator and uses its matching result in the response (S-06): $prompt',
-  async ({ prompt, left, value }) => {
+  async ({ prompt, operation, left, right, value }) => {
     const run = start(prompt);
     await complete(run);
     const call = run.events.find((event) => event.type === 'tool_call');
     expect(call).toMatchObject({
       type: 'tool_call',
       tool: 'calculator',
-      input: { operation: 'multiply', left, right: 24 },
+      input: { operation, left, right },
     });
     expect(
       run.events.find((event) => event.type === 'tool_result'),
@@ -408,7 +409,7 @@ it.each([
 );
 
 it('normalizes a tool failure without leaking internal details', async () => {
-  vi.spyOn(calculator, 'calculateProduct').mockImplementationOnce(() => {
+  vi.spyOn(calculator, 'calculate').mockImplementationOnce(() => {
     throw new Error('private tool error');
   });
   const run = start('17 × 24');
@@ -522,8 +523,8 @@ it('finishes even the slowest calculator response below 3 seconds and before the
     Date.parse(picture.events.at(-1)?.at ?? '') - pictureStart;
   for (const prompt of [
     '17 * 24',
-    '-10000 * 10000',
-    '-10000 * -10000',
+    '-10001 * 10000',
+    '-10000 * -10001',
     '0 * 0',
   ]) {
     const beginning = Date.now();
@@ -531,7 +532,7 @@ it('finishes even the slowest calculator response below 3 seconds and before the
     await complete(run);
     const elapsed = Date.parse(run.events.at(-1)?.at ?? '') - beginning;
     expect(run.events.at(-1)?.type).toBe('completed');
-    expect(textOf(run.events)).toContain('Я проверил произведение');
+    expect(textOf(run.events)).toContain('Я проверил вычисление');
     expect(elapsed).toBeLessThan(3000);
     expect(elapsed).toBeLessThan(imageDuration);
     expect(vi.getTimerCount()).toBe(0);

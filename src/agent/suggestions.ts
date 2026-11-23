@@ -1,29 +1,32 @@
 import type { LearningContext } from './context';
+import { getDictionary } from '@/app/i18n';
+import type { Language } from '@/shared/language';
 
 export const EMPTY_SUGGESTIONS: readonly string[] = Object.freeze([]);
-const equationQuestions = {
-  1: 'Почему нужно раскрывать скобки?',
-  2: 'Почему −12 + 5 = −7?',
-  3: 'Почему при переносе меняется знак?',
-} as const;
-
-export function getSuggestions(context: LearningContext): readonly string[] {
+export function getSuggestions(
+  context: LearningContext,
+  language: Language = 'en',
+): readonly string[] {
+  const text = getDictionary(language).agent.suggestions;
   if (context.topic === 'newton') {
     return [
-      ...(!context.simplified ? ['Объясни проще'] : []),
-      ...(!context.diagramShown ? ['Покажи схему'] : []),
-      ...(!context.exampleShown ? ['Приведи пример из жизни'] : []),
+      ...(!context.simplified ? [text.simplify] : []),
+      ...(!context.diagramShown ? [text.diagram] : []),
+      ...(!context.exampleShown ? [text.lifeExample] : []),
     ];
   }
   if (context.topic === 'equation') {
     if (context.step !== 4)
       return context.questionAnswered
-        ? ['Дальше']
-        : ['Дальше', equationQuestions[context.step]];
+        ? [text.next]
+        : [
+            text.next,
+            text.equationQuestions[String(context.step) as '1' | '2' | '3'],
+            ];
     return [
-      ...(!context.verificationDetailed ? ['Покажи проверку подробнее'] : []),
+      ...(!context.verificationDetailed ? [text.verifyDetail] : []),
       ...(!context.verificationExplained
-        ? ['Объясни, как проверить ответ']
+        ? [text.verifyMethod]
         : []),
     ];
   }

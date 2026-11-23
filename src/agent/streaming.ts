@@ -113,6 +113,8 @@ export async function* streamText(
   config: StreamingConfig,
   random: () => number,
 ): AsyncGenerator<string> {
+  // Keep Markdown blocks meaningful and split text into Unicode fragments so the stream
+  // does not break surrogate pairs; pauses simulate reading and paragraph transitions.
   if (
     config.wordsPerSecond <= 0 ||
     config.headingWordsPerSecond <= 0 ||

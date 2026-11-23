@@ -1,58 +1,64 @@
 import type { Command } from './commands';
 import type { LearningContext } from './context';
 import { applyCompletedCommand } from './context';
-import { EQUATION_CHECK_DETAIL, EQUATION_STEPS } from './equation';
 import type { DemoFailureKind } from './types';
+import { getDictionary } from '@/app/i18n';
+import type { Language } from '@/shared/language';
 
 type Scenario =
   | { kind: 'text'; text: string; interrupt?: boolean }
   | { kind: 'image'; text: ''; fail: boolean }
-  | { kind: 'calculator'; left: number; right: number; fail: boolean };
+  | {
+      kind: 'calculator';
+      operation: 'add' | 'subtract' | 'multiply' | 'divide';
+      left: number;
+      right: number;
+      fail: boolean;
+    };
 
-function fallback(context: LearningContext): Scenario {
-  const introduction =
-    'Я работаю в деморежиме и пока понимаю только подготовленные команды.';
+function fallback(context: LearningContext, language: Language): Scenario {
+  const text = getDictionary(language).agent.fallback;
+  const introduction = text.introduction;
   if (context.topic === 'newton')
     return {
       kind: 'text',
-      text: `${introduction}\n\nМы обсуждаем второй закон Ньютона. Можно попросить объяснить проще, показать схему или привести пример из жизни.`,
+      text: `${introduction}\n\n${text.newton}`,
     };
   if (context.topic === 'equation') {
     const subject =
-      context.step === 1
-        ? 'раскрытие скобок'
-        : context.step === 2
-          ? 'сложение −12 и 5'
-          : 'перенос слагаемых';
+      text.equationSubjects[
+        context.step === 1 ? 0 : context.step === 2 ? 1 : 2
+      ] ?? '';
     return {
       kind: 'text',
-      text: `${introduction}\n\n${context.step === 4 ? 'Можем подробнее разобрать проверку найденного ответа.' : `В нашем примере разбираем ${subject}. Чтобы продолжить решение, выбери «Дальше».`}`,
+      text: `${introduction}\n\n${context.step === 4 ? text.equationFinished : text.equationContinue.replace('{subject}', subject)}`,
     };
   }
   return {
     kind: 'text',
-    text: `${introduction} Попробуй один из запросов:\n\n- «Объясни второй закон Ньютона»\n- «Помоги решить уравнение»\n- «Сколько будет 17 × 24?»`,
+    text: `${introduction} ${text.examplesIntro}\n\n${text.examples.map((example) => `- “${example}”`).join('\n')}`,
   };
 }
 
+// Purely select a prepared response from the command, learning context, and failures
+// already demonstrated. UI and delays are handled by mockAgent.
 export function chooseScenario(
   command: Command,
   context: LearningContext,
   demonstratedFailures: readonly DemoFailureKind[],
+  language: Language = 'en',
 ): Scenario {
+  const text = getDictionary(language).agent;
   switch (command.kind) {
     case 'newton':
       return {
         kind: 'text',
-        text: '**Второй закон Ньютона** связывает равнодействующую силу, массу и ускорение тела: **F = m · a**, или **a = F / m**.\n\nF — сумма действующих на тело сил в ньютонах, m — масса в килограммах, a — ускорение в м/с². Ускорение направлено вдоль равнодействующей силы.\n\nПри одинаковой массе большая сила даёт большее ускорение. При одинаковой силе более массивное тело получает меньшее ускорение. Например, сила 6 Н сообщает телу массой 2 кг ускорение 3 м/с².\n\nМожно выбрать простое объяснение, схему или пример из жизни в любом порядке.',
+        text: text.newton.answer,
       };
     case 'simplify':
       return context.topic === 'newton'
-        ? {
-            kind: 'text',
-            text: 'Представь пустую тележку и тяжёлый автомобиль. Если толкать их с одинаковой силой, тележка разгонится заметнее: её масса меньше.\n\nТеперь толкни ту же тележку сильнее — её скорость начнёт меняться быстрее. Это и есть ускорение. Второй закон Ньютона говорит: **сильнее толкаем — больше ускорение; больше масса — меньше ускорение при той же силе**.',
-          }
-        : fallback(context);
+        ? { kind: 'text', text: text.newton.simplified }
+        : fallback(context, language);
     case 'diagram':
       if (context.topic === 'newton')
         return {
@@ -60,28 +66,32 @@ export function chooseScenario(
           text: '',
           fail: !demonstratedFailures.includes('image'),
         };
-      return fallback(context);
+      return fallback(context, language);
     case 'life_example':
       return context.topic === 'newton'
         ? {
             kind: 'text',
-            text: 'Пример из жизни — удар по футбольному мячу. Во время удара нога действует на мяч силой, и скорость мяча меняется. Чем больше равнодействующая сила при той же массе мяча, тем больше его ускорение.\n\nЕсли с той же силой толкнуть более тяжёлый мяч, его ускорение будет меньше. Важно: закон связывает силу с **изменением скорости**, а не с самой скоростью. После окончания удара движение определяют силы, которые продолжают действовать на мяч.',
+            text: text.newton.lifeExample,
           }
-        : fallback(context);
+        : fallback(context, language);
     case 'equation': {
       const nextContext = applyCompletedCommand(context, command);
       return {
         kind: 'text',
-        text: EQUATION_STEPS[
-          nextContext.topic === 'equation' ? nextContext.step : 1
-        ].answer,
+        text: text.equation.steps[
+          String(
+            nextContext.topic === 'equation' ? nextContext.step : 1,
+          ) as keyof typeof text.equation.steps
+        ].answer
+          .replace('{equation}', text.equation.expression)
+          .replace('{check}', text.equation.check),
       };
     }
     case 'next':
       if (context.topic !== 'equation')
         return {
           kind: 'text',
-          text: 'Какую задачу продолжить? Напиши «Помоги решить уравнение», чтобы начать пошаговое решение.',
+          text: text.equation.nextWithoutEquation,
         };
       return {
         kind: 'text',
@@ -89,10 +99,14 @@ export function chooseScenario(
           context.step === 2 && !demonstratedFailures.includes('equation'),
         text:
           context.step === 4
-            ? 'Уравнение уже решено: x = 21/4 = 5,25. Можно уточнить проверку ответа или выбрать другую учебную тему.'
-            : EQUATION_STEPS[
-                context.step === 1 ? 2 : context.step === 2 ? 3 : 4
-              ].answer,
+            ? text.equation.solved
+            : text.equation.steps[
+                String(
+                  context.step === 1 ? 2 : context.step === 2 ? 3 : 4,
+                ) as keyof typeof text.equation.steps
+              ].answer
+                .replace('{equation}', text.equation.expression)
+                .replace('{check}', text.equation.check),
       };
     case 'explain_brackets':
     case 'explain_constants':
@@ -104,8 +118,11 @@ export function chooseScenario(
             ? 2
             : 3;
       return context.topic === 'equation' && context.step === step
-        ? { kind: 'text', text: EQUATION_STEPS[step].detail }
-        : fallback(context);
+        ? {
+            kind: 'text',
+            text: text.equation.steps[String(step) as '1' | '2' | '3'].detail,
+          }
+        : fallback(context, language);
     }
     case 'verify_detail':
     case 'verify_method':
@@ -114,19 +131,20 @@ export function chooseScenario(
             kind: 'text',
             text:
               command.kind === 'verify_detail'
-                ? EQUATION_CHECK_DETAIL
-                : 'Чтобы проверить корень, подставь найденное значение вместо каждого x именно в исходное уравнение. Вычисли левую и правую части отдельно, соблюдая порядок действий: скобки, умножение, сложение.\n\nПри x = 5,25 обе части равны 24,5. Поэтому найденное число подходит. Равенство в одном промежуточном преобразовании не заменяет проверку исходного уравнения.',
+                ? text.equation.checkDetail
+                : text.equation.verifyMethod,
           }
-        : fallback(context);
+        : fallback(context, language);
     case 'calculator':
       return {
         kind: 'calculator',
+        operation: command.operation,
         left: command.left,
         right: command.right,
         fail: !demonstratedFailures.includes('calculator'),
       };
     case 'unsupported':
-      return fallback(context);
+      return fallback(context, language);
     default: {
       const unreachable: never = command;
       return unreachable;
